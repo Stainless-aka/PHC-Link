@@ -230,6 +230,53 @@ button { min-height: 40px; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+
+/* Desktop app layout: render the health-worker interface as a full web workspace,
+   not inside a simulated phone frame. Keep the phone presentation on small screens. */
+@media (min-width: 900px) {
+  .stage {
+    display: block;
+    width: 100%;
+    padding: 0;
+  }
+  .device {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    border-radius: 18px;
+    background: transparent;
+    box-shadow: none;
+  }
+  .screen-wrap {
+    width: 100%;
+    height: auto;
+    min-height: min(760px, calc(100dvh - 170px));
+    max-height: none;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .sb { display: none; }
+  .hdr {
+    padding: 22px 28px;
+    align-items: center;
+  }
+  .hdr b { font-size: 22px; }
+  .net { padding: 12px 28px; }
+  .body {
+    padding: 28px;
+    overflow: visible;
+  }
+  .tabs button {
+    flex-direction: row;
+    justify-content: center;
+    gap: 9px;
+    padding: 15px 12px;
+    font-size: 13px;
+  }
+  .note { max-width: 720px; }
+}
+
 </style>
 </head>
 <body>
