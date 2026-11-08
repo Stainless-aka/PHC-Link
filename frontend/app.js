@@ -26,7 +26,9 @@ const refs = [
 ];
 let local = { ...server[0].items };
 let queue = 0;
-const S = { view: "app", screen: "home", online: true, form: false, sel: 0, lang: "en", u: { step: "idle", out: "", item: null, age: null, msgs: [] } };
+const PAGE = document.body.dataset.page || "home";
+const S = { view: "app", screen: PAGE, online: true, form: new URLSearchParams(location.search).get("new") === "1", sel: 0, lang: "en", u: { step: "idle", out: "", item: null, age: null, msgs: [] } };
+try { const saved = JSON.parse(sessionStorage.getItem("phc-link-demo-state") || "null"); if (saved) { if (saved.local) local = { ...local, ...saved.local }; if (Number.isFinite(saved.queue)) queue = saved.queue; if (Array.isArray(saved.refs)) refs.splice(0, refs.length, ...saved.refs); if (Array.isArray(saved.server)) saved.server.forEach((f, i) => { if (server[i]) Object.assign(server[i], f); }); if (saved.u) S.u = { ...S.u, ...saved.u }; if (typeof saved.online === "boolean") S.online = saved.online; if (saved.lang) S.lang = saved.lang; } } catch (error) { console.warn("Demo state could not be restored.", error); }
 
 const H = {
   "Home": "Gida", "Stock": "Kayan magani", "Referrals": "Turawa", "USSD": "USSD",
@@ -79,7 +81,7 @@ function setView(v) {
   document.getElementById("vDash").setAttribute("aria-pressed", v === "dash");
   render();
 }
-const go = s => { S.screen = s; S.form = false; render(); };
+const go = (s, isNew = false) => { const pages = { home: "index.html", stock: "stock.html", ref: "referrals.html", ussd: "ussd.html" }; const target = pages[s]; if (target) location.href = target + (isNew ? "?new=1" : ""); };
 const setLang = l => { S.lang = l; render(); };
 function toggleNet() { S.online = !S.online; if (S.online && (queue || refs.some(r => r.st === "Queued"))) toast("Back online. Tap Sync now to upload."); render(); }
 function sync() { server[0].items = { ...local }; server[0].sync = "Just now"; refs.forEach(r => { if (r.st === "Queued") r.st = "Sent"; }); queue = 0; toast("Synced. Officers can now see your update."); render(); }
@@ -164,7 +166,7 @@ function appView() {
     <p class="sub">${bad.length ? (ha ? `Akwai abubuwa ${bad.length} da ke bukatar kulawa a asibitinku.` : `${bad.length} item${bad.length > 1 ? "s" : ""} need attention at your clinic.`) : tr("All stock levels look healthy.")}</p>
     <div class="stats"><div class="stat"><b>${ITEMS.length}</b><span>${tr("Items tracked")}</span></div><div class="stat low"><b>${nLow}</b><span>${tr("Low")}</span></div><div class="stat out"><b>${nOut}</b><span>${tr("Out")}</span></div></div>
     <h3>${tr("Needs attention")}</h3>` + (bad.length ? bad.map(t => row(t, pill(st(local[t.id], t.min)))).join("") : `<p class="sub">${tr("All stock levels look healthy.")}</p>`) +
-    `<div class="stack"><button class="btn" onclick="go('stock')">${ic("box", "sm")}${tr("Count stock")}</button><button class="btn sec" onclick="go('ref');S.form=true;render()">${ic("swap", "sm")}${tr("Refer a patient")}</button></div>`;
+    `<div class="stack"><button class="btn" onclick="go('stock')">${ic("box", "sm")}${tr("Count stock")}</button><button class="btn sec" onclick="go('ref',true)">${ic("swap", "sm")}${tr("Refer a patient")}</button></div>`;
   }
   if (S.screen === "stock") {
     body = `<h2>${tr("Today\u2019s stock count")}</h2><p class="sub">${tr("Tap + or \u2212 to match what is on the shelf.")}</p>` +
@@ -192,7 +194,7 @@ function appView() {
       (S.u.msgs.length ? `<h3>${tr("Messages")}</h3>` + S.u.msgs.slice(0, 4).map(m => `<div class="msg">${m}</div>`).join("") : "");
   }
   const pend = queue + refs.filter(r => r.st === "Queued").length;
-  const tabs = [["home", "Home", "home"], ["stock", "Stock", "box"], ["ref", "Referrals", "swap"], ["ussd", "USSD", "phone"]];
+  const tabs = [["home", "Home", "home", "index.html"], ["stock", "Stock", "box", "stock.html"], ["ref", "Referrals", "swap", "referrals.html"], ["ussd", "USSD", "phone", "ussd.html"]];
   return `<div class="stage"><div class="device"><div class="screen-wrap">
     <div class="sb"><span>09:41</span><span>${ic("wifi", "sm")}</span></div>
     <div class="hdr"><div><b>Kuje PHC</b><small>Kuje Area Council, FCT</small></div>
@@ -200,7 +202,7 @@ function appView() {
     <div class="net"><button class="chip ${S.online ? "" : "off"}" onclick="toggleNet()" aria-label="Toggle connection for demo"><span class="d"></span>${tr(S.online ? "Online" : "Offline")}</button>
       ${pend ? `<span>${pend} ${tr("waiting")}</span><button class="btn sm" onclick="${S.online ? "sync()" : "toast('Go online to sync')"}">${tr("Sync now")}</button>` : `<span style="color:var(--mute)">${tr(S.online ? "Everything is synced" : "Working offline")}</span>`}</div>
     <div class="body">${S.online ? "" : `<div class="banner">${ic("alert", "sm")}<span>${tr("No signal. You can keep working. Changes save on this phone.")}</span></div>`}${body}</div>
-    <nav class="tabs" aria-label="App sections">${tabs.map(([k, v, i]) => `<button ${S.screen === k ? 'aria-current="page"' : ""} onclick="go('${k}')">${ic(i)}${tr(v)}</button>`).join("")}</nav>
+    <nav class="tabs" aria-label="App sections">${${tabs.map(([k, v, i, href]) => `<a ${S.screen === k ? 'aria-current="page"' : ""} href="${href}">${ic(i)}${tr(v)}</a>`).join("")}}</nav>
   </div></div></div>
   <p class="note">Try it: switch to HA for Hausa. On the USSD tab, dial the code, reply 1, pick an item and enter a number. Then open the Officer dashboard.</p>`;
 }
@@ -252,5 +254,5 @@ function dashView() {
   </section>`;
 }
 
-function render() { document.getElementById("root").innerHTML = S.view === "app" ? appView() : dashView(); }
+function render() { try { sessionStorage.setItem("phc-link-demo-state", JSON.stringify({ local, queue, refs, server, online: S.online, lang: S.lang, u: S.u })); } catch (error) { console.warn("Demo state could not be saved.", error); } document.getElementById("root").innerHTML = S.view === "app" ? appView() : dashView(); }
 render();
