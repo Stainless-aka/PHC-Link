@@ -208,27 +208,48 @@ function appView() {
 function dashView() {
   const F = server, sums = F.map(fst);
   const outs = sums.reduce((a, s) => a + s.o, 0), lows = sums.reduce((a, s) => a + s.l, 0);
-  const done = refs.filter(r => r.st === "Arrived").length, pct = Math.round((done / refs.length) * 100);
+  const done = refs.filter(r => r.st === "Arrived").length, pct = refs.length ? Math.round((done / refs.length) * 100) : 0;
   const f = F[S.sel];
   const alerts = [];
-  F.forEach(x => ITEMS.forEach(t => { if (x.items[t.id] <= 0) alerts.push(`${x.name}: ${t.n}`); }));
-  const kpi = (icon, cls, label, val) => `<div class="kpi"><div class="ico ${cls}">${ic(icon, "lg")}</div><div><span>${label}</span><b>${val}</b></div></div>`;
-  return `<div class="dh"><div><h2>District overview</h2><p class="sub" style="margin:0">FCT primary health centres · demo data</p></div></div>
-  <div class="kpis">${kpi("building", "", "Facilities reporting", F.length)}${kpi("alert", "out", "Stock-outs now", outs)}${kpi("trend", "low", "Items running low", lows)}${kpi("check", "", "Referrals completed", pct + "%")}</div>
-  <div class="grid"><div class="col"><div class="card scroll"><h2>Facilities</h2><p class="hint">Select a row to see its stock. Each block is one tracked item.</p>
-    <table><thead><tr><th>Facility</th><th>Status</th><th>Stock health</th><th>Last update</th></tr></thead><tbody>
-    ${F.map((x, i) => `<tr tabindex="0" class="${i === S.sel ? "sel" : ""}" onclick="selF(${i})" onkeydown="if(event.key==='Enter')selF(${i})"><td><b>${x.name}</b></td><td>${pill(sums[i].s)}</td>
-      <td><div class="blocks">${ITEMS.map(t => `<i class="${st(x.items[t.id], t.min)}"></i>`).join("")}</div></td><td>${x.sync}</td></tr>`).join("")}</tbody></table></div>
-    <div class="card"><h2>Facility map</h2><p class="hint">Demo layout, not to scale.</p>
-      <svg class="map" viewBox="0 0 340 300" role="img" aria-label="Map of facilities coloured by stock status">
-      <g stroke="var(--line)" stroke-width="1">${[60, 120, 180, 240].map(p => `<line x1="${p}" y1="0" x2="${p}" y2="300"/><line x1="0" y1="${p}" x2="340" y2="${p}"/>`).join("")}</g>
-      ${F.map((x, i) => `<g><circle cx="${x.x}" cy="${x.y}" r="${i === S.sel ? 16 : 11}" fill="${COL[sums[i].s]}" stroke="var(--surf)" stroke-width="3" onclick="selF(${i})"/><text x="${x.x}" y="${x.y + 30}" text-anchor="middle" font-size="11" font-weight="600" fill="var(--mute)">${x.area}</text></g>`).join("")}</svg>
-      <div class="legend"><span><i style="background:var(--ok)"></i>Healthy</span><span><i style="background:var(--low)"></i>Low</span><span><i style="background:var(--out)"></i>Stock-out</span></div></div></div>
-  <div class="col"><div class="card"><h2>${f.name}</h2><p class="hint">Last update: ${f.sync}</p>
-    ${ITEMS.map(t => { const q = f.items[t.id], s = st(q, t.min); return `<div class="meter"><span>${t.n}</span><span>${q} ${pill(s)}</span></div><div class="bar"><i style="width:${Math.min(100, (q / (t.min * 2)) * 100)}%;background:${COL[s]}"></i></div>`; }).join("")}
-    <button class="btn sec" onclick="sms('${f.area}')">${ic("send", "sm")}Send SMS alert to LGA officer</button></div>
-    <div class="card"><h2>Alerts</h2>${alerts.length ? alerts.map(a => `<div class="rrow"><span>${a} is out</span><span class="pill out">Out</span></div>`).join("") : '<p class="hint">No stock-outs right now.</p>'}</div>
-    <div class="card"><h2>Recent referrals</h2>${refs.slice(0, 5).map(r => `<div class="rrow"><div>${r.why}<small>${r.fac} to ${r.to.replace(" General Hospital", "")}</small></div>${rpill(r.st)}</div>`).join("")}</div></div></div>`;
+  F.forEach(x => ITEMS.forEach(t => { if (x.items[t.id] <= 0) alerts.push({facility:x.name,item:t.n}); }));
+  const kpi = (icon, cls, label, val, meta) => `<article class="kpi"><div class="ico ${cls}">${ic(icon, "lg")}</div><div class="kpi-copy"><span>${label}</span><b>${val}</b><small>${meta}</small></div></article>`;
+  return `<section class="dashboard">
+    <div class="dash-head"><div><div class="eyebrow">FCT / HEALTH SYSTEM MONITORING</div><h2>Operations overview</h2><p class="sub">Monitor facility stock levels and referral activity across the network.</p></div><div class="report-date"><span class="live-dot"></span> Demo environment <span class="date-sep">·</span> Sample data</div></div>
+    <div class="kpis">
+      ${kpi("building","","Reporting facilities",F.length,"Facilities in this demo network")}
+      ${kpi("alert","out","Stock-out incidents",outs,"Items currently at zero")}
+      ${kpi("trend","low","Low-stock warnings",lows,"Items below minimum level")}
+      ${kpi("check","","Referral arrival rate",pct+"%",done+" of "+refs.length+" referrals marked arrived")}
+    </div>
+    <div class="dash-layout">
+      <div class="dash-main">
+        <section class="panel facilities-panel">
+          <div class="panel-head"><div><div class="eyebrow">NETWORK STATUS</div><h3>Facility inventory</h3><p>Choose a facility to inspect its current stock position.</p></div><span class="count-label">${F.length} facilities</span></div>
+          <div class="table-wrap"><table><thead><tr><th>Facility</th><th>Area</th><th>Stock condition</th><th>Last update</th><th></th></tr></thead><tbody>
+          ${F.map((x,i)=>`<tr tabindex="0" class="${i===S.sel?"sel":""}" onclick="selF(${i})" onkeydown="if(event.key==='Enter'||event.key===' ')selF(${i})"><td><span class="facility-mark">${ic("building","sm")}</span><strong>${x.name}</strong></td><td>${x.area}</td><td><span class="status-wrap">${pill(sums[i].s)}<span class="status-detail">${sums[i].o} out · ${sums[i].l} low</span></span></td><td>${x.sync}</td><td class="table-arrow">›</td></tr>`).join("")}
+          </tbody></table></div>
+          <div class="table-foot"><span>Inventory status is based on the configured minimum stock level.</span><span>Selected: <strong>${f.name}</strong></span></div>
+        </section>
+        <section class="panel referral-panel">
+          <div class="panel-head"><div><div class="eyebrow">PATIENT MOVEMENT</div><h3>Recent referrals</h3><p>Referral progress recorded by facilities.</p></div><span class="count-label">${refs.length} records</span></div>
+          <div class="referral-list">${refs.slice(0,6).map(r=>`<div class="referral-row"><div class="ref-icon">${ic("swap")}</div><div class="ref-details"><strong>${r.why}</strong><small>${r.fac} <span>→</span> ${r.to}</small></div><div class="ref-age">${r.who}</div>${rpill(r.st)}</div>`).join("")}</div>
+        </section>
+      </div>
+      <aside class="dash-side">
+        <section class="panel selected-panel">
+          <div class="panel-head compact"><div><div class="eyebrow">FACILITY DETAIL</div><h3>${f.name}</h3><p>${f.area} · Updated ${f.sync}</p></div><span class="detail-mark">${ic("building")}</span></div>
+          <div class="stock-summary"><span>Tracked commodities</span><strong>${ITEMS.length}</strong></div>
+          <div class="detail-stock">${ITEMS.map(t=>{const q=f.items[t.id],s=st(q,t.min);return `<div class="detail-stock-row"><div class="detail-stock-top"><span>${t.n}</span><strong>${q} <small>units</small></strong></div><div class="detail-track"><i class="${s}" style="width:${Math.min(100,(q/(t.min*2))*100)}%"></i></div><div class="detail-stock-meta"><span>Minimum ${t.min}</span>${pill(s)}</div></div>`;}).join("")}</div>
+          <button class="btn sec alert-action" onclick="sms('${f.area}')">${ic("send","sm")}Notify LGA officer</button>
+        </section>
+        <section class="panel alerts-panel"><div class="panel-head compact"><div><div class="eyebrow">ACTION REQUIRED</div><h3>Stock-out alerts</h3></div><span class="alert-count">${alerts.length}</span></div>
+          ${alerts.length?alerts.slice(0,7).map(a=>`<div class="alert-row"><span class="alert-symbol">${ic("alert","sm")}</span><div><strong>${a.item}</strong><small>${a.fac}</small></div><span class="pill out">Out</span></div>`).join(""):'<p class="empty-state">No stock-out alerts at this time.</p>'}
+          ${alerts.length>7?'<p class="more-alerts">+'+(alerts.length-7)+' more alerts</p>':""}
+        </section>
+      </aside>
+    </div>
+    <p class="demo-disclaimer">PHC Link demonstration · All facilities, stock quantities and referral records shown here are sample data, not live health-system records.</p>
+  </section>`;
 }
 
 function render() { document.getElementById("root").innerHTML = S.view === "app" ? appView() : dashView(); }
