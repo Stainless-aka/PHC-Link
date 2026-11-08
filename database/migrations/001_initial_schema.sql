@@ -136,3 +136,18 @@ CREATE TABLE audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX audit_logs_actor_created_idx ON audit_logs(actor_user_id, created_at DESC);
+
+-- Keep all application tables inaccessible through the public Data API by default.
+-- The PHC Link Express API connects server-side using DATABASE_URL.
+ALTER TABLE states ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lgas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE facilities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE facility_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_lga_access ENABLE ROW LEVEL SECURITY;
+ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_movements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referrals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE referral_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sync_operations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
