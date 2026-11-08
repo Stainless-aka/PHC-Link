@@ -9,12 +9,13 @@ Offline-first primary healthcare stock and referral coordination platform.
 
 ## Local setup
 
-1. Create a PostgreSQL database named `phc_link`.
-2. Copy `.env.example` to `.env` and configure `DATABASE_URL` and a strong `SESSION_SECRET`.
-3. Install dependencies: `npm install`.
-4. Apply the initial schema using `psql "$DATABASE_URL" -f database/migrations/001_initial_schema.sql`.
-5. Start the API: `npm run dev`.
-6. Check `http://localhost:3000/api/health`.
+1. Open the PHC-Link Supabase project: https://supabase.com/dashboard/project/vqiraxattugqfacnlzst.
+2. In **Connect**, copy the **Session pooler** connection URI and replace the placeholders in `.env.example` after copying it to `.env`. Use your database password; never commit it.
+3. Set a strong `SESSION_SECRET` (at least 32 characters).
+4. Install dependencies: `npm install`.
+5. Apply the schema using `psql "$DATABASE_URL" -f database/migrations/001_initial_schema.sql`. The same initial schema has already been applied to the hosted PHC-Link Supabase project.
+6. Start the API: `npm run dev`.
+7. Check `http://localhost:3000/api/health`.
 
 The API runs separately from the current static prototype in `frontend/`. Frontend API integration and the genuine offline queue are the next implementation milestone.
 
