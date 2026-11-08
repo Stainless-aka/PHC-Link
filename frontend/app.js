@@ -204,7 +204,7 @@ function appView() {
     <div class="body">${S.online ? "" : `<div class="banner">${ic("alert", "sm")}<span>${tr("No signal. You can keep working. Changes save on this phone.")}</span></div>`}${body}</div>
     <nav class="tabs" aria-label="App sections">${tabs.map(([k, v, i, href]) => `<a ${S.screen === k ? 'aria-current="page"' : ""} href="${href}">${ic(i)}${tr(v)}</a>`).join("")}</nav>
   </div></div></div>
-  <p class="note">Try it: switch to HA for Hausa. On the USSD tab, dial the code, reply 1, pick an item and enter a number. Then open the Officer dashboard.</p>`;
+  <p class="note"></p>`;
 }
 
 function dashView() {
