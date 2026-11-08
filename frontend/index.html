@@ -286,7 +286,104 @@ button { min-height: 40px; }
   .note { max-width: 720px; }
 }
 
-</style>
+
+/* PHC Link visual refresh — restrained clinical operations interface */
+:root {
+  --font: "Inter", "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --bg: #f2f5f7;
+  --surf: #ffffff;
+  --ink: #172b3a;
+  --mute: #667784;
+  --line: #dce4e9;
+  --brand: #176b73;
+  --brand-d: #173b50;
+  --brand-t: #e7f0f1;
+  --on-brand: #ffffff;
+  --ok: #26734d;
+  --ok-bg: #e8f3ec;
+  --low: #986512;
+  --low-bg: #f7f0df;
+  --out: #a83e3e;
+  --out-bg: #f7e9e8;
+  --shadow: 0 1px 2px rgba(23,43,58,.04), 0 5px 18px rgba(23,43,58,.045);
+  color-scheme: light;
+}
+body { background: var(--bg); color: var(--ink); font-size: 14px; line-height: 1.55; }
+.top { max-width: 1440px; padding: 20px 32px; }
+.brand { gap: 13px; }
+.logo { width: 42px; height: 42px; border-radius: 10px; background: var(--brand-d); }
+.logo:after { display: none; }
+.brand h1 { font-size: 19px; letter-spacing: -.035em; }
+.brand p { color: var(--mute); font-size: 12px; }
+.seg { background: transparent; border: 1px solid var(--line); border-radius: 9px; box-shadow: none; padding: 3px; }
+.seg button { border-radius: 6px; padding: 9px 13px; font-size: 12.5px; }
+.seg button[aria-pressed="true"] { background: var(--brand-d); color: #fff; }
+main { max-width: 1440px; }
+.device { box-shadow: none; }
+.screen-wrap { background: var(--surf); }
+.hdr { background: var(--brand-d); }
+.net { background: #f7f9fa; }
+.tabs { background: #fff; }
+.tabs button { transition: background .15s ease, color .15s ease; }
+.tabs button[aria-current="page"] { color: var(--brand); background: #edf4f5; border-radius: 7px; }
+.stat { background: #f4f7f8; border: 1px solid #e9eef1; border-radius: 9px; }
+.ico { border-radius: 9px; background: var(--brand-t); }
+.btn { background: var(--brand); border-radius: 8px; font-weight: 650; }
+.btn.sec { border-radius: 8px; }
+.chip { border-radius: 7px; }
+.card, .kpi { border-radius: 11px; box-shadow: var(--shadow); }
+.card { border-color: var(--line); }
+.kpi { border-color: var(--line); }
+input, select { border-radius: 8px; }
+.banner, .msg { border-radius: 8px; }
+.item { padding: 13px 0; }
+.note { max-width: 720px; font-size: 11.5px; }
+.dh h2 { font-size: 23px; letter-spacing: -.035em; }
+h2 { letter-spacing: -.025em; }
+h3 { margin-top: 22px; }
+.pill { border-radius: 5px; font-size: 11px; letter-spacing: .01em; }
+.bar { height: 5px; }
+.toast { border-radius: 8px; }
+
+/* Full desktop workspace */
+@media (min-width: 900px) {
+  .top { padding-top: 22px; padding-bottom: 18px; }
+  main { padding-inline: 32px; }
+  .stage { padding-top: 0; }
+  .screen-wrap { border: 1px solid var(--line); border-radius: 12px; }
+  .hdr { padding: 20px 28px; }
+  .hdr b { font-size: 20px; }
+  .hdr small { font-size: 12px; }
+  .net { padding: 10px 28px; }
+  .tabs { padding: 8px 22px; gap: 5px; }
+  .tabs button { min-width: 112px; padding: 12px 16px; border-radius: 7px; }
+  .body { padding: 28px; }
+  .stats { max-width: 650px; gap: 12px; }
+  .stat { padding: 14px 16px; }
+  .stat b { font-size: 25px; }
+  .stack { max-width: 460px; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .item { max-width: 900px; }
+  .dh { margin-bottom: 20px; }
+  .kpis { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+  .kpi { padding: 18px; }
+  .grid { gap: 18px; }
+  .card { padding: 20px; }
+}
+@media (max-width: 899px) {
+  .top { padding: 14px 16px; }
+  .brand h1 { font-size: 17px; }
+  .seg button { padding: 8px 10px; }
+  .device { border-radius: 18px; background: transparent; padding: 0; }
+  .screen-wrap { border: 1px solid var(--line); border-radius: 16px; }
+  .hdr { background: var(--brand-d); }
+  .tabs button[aria-current="page"] { background: transparent; }
+}
+@media (max-width: 480px) {
+  .screen-wrap { border-radius: 13px; }
+  .hdr { padding: 12px 14px; }
+  .tabs button { min-height: 48px; }
+}
+\n</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
