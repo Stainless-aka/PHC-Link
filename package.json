@@ -1,0 +1,24 @@
+{
+  "name": "phc-link",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Offline-first primary healthcare stock and referral coordination platform",
+  "main": "backend/src/server.js",
+  "scripts": {
+    "start": "node backend/src/server.js",
+    "dev": "node --watch backend/src/server.js",
+    "check": "node --check backend/src/server.js && node --check backend/src/routes/auth.routes.js && node --check backend/src/routes/facilities.routes.js && node --check backend/src/routes/inventory.routes.js && node --check backend/src/routes/referrals.routes.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "pg": "^8.13.1"
+  }
+}
