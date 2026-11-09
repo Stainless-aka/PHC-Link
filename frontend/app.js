@@ -164,7 +164,8 @@ async function handleSubmit(event) {
   try{await api(config[0],{method:"POST",body:JSON.stringify(config[1](formData(form)))});notify("Record saved successfully.");await dashboardView();}
   catch(error){notify(error.message,true);}
 }
-document.addEventListener("submit",handleSubmit);\ndocument.addEventListener("change",event=>{if(event.target.id==="facilityPicker"){STATE.facilityId=event.target.value;facilityWorkspace();}});
+document.addEventListener("submit",handleSubmit);
+document.addEventListener("change",event=>{if(event.target.id==="facilityPicker"){STATE.facilityId=event.target.value;facilityWorkspace();}});
 document.addEventListener("click",async event=>{
   if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")){
     try{await api("/api/auth/logout",{method:"POST"});STATE.user=null;STATE.facilityId=null;notify("Signed out.");window.location.assign("index.html");}
