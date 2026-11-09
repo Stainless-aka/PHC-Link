@@ -139,10 +139,6 @@ async function checkApiConnection() {
     node.textContent=result.status==="ok"&&result.database==="connected"?"API connected · Database connected":"API reachable";
   } catch(error) { node.textContent="Backend unavailable"; }
 }
-function render() {
-  const root=document.getElementById("root"); if(!root)return;
-  if(WORKSPACE==="admin") dashboardView(); else if(WORKSPACE==="facility") facilityWorkspace(); else loginPageView();
-}
 function formData(form){return Object.fromEntries(new FormData(form).entries());}
 async function handleSubmit(event) {
   const form=event.target; if(!(form instanceof HTMLFormElement))return;
