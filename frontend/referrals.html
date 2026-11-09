@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
-<body data-page="ref">
+<body data-page="ref" data-workspace="facility">
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
@@ -31,11 +31,7 @@
 </defs></svg>
 <header class="top">
   <div class="brand"><div class="logo"><svg class="ic lg"><use href="#i-cross"/></svg></div><div><h1>PHC Link</h1><p>PRIMARY HEALTHCARE OPERATIONS</p></div></div>
-  <div class="seg" role="group" aria-label="Switch workspace">
-    <button id="vApp" aria-pressed="true" onclick="setView('app')"><svg class="ic sm"><use href="#i-phone"/></svg>Facility workspace</button>
-    <button id="vDash" aria-pressed="false" onclick="setView('dash')"><svg class="ic sm"><use href="#i-building"/></svg>Administration</button>
-  </div>
-</header>
+  </header>
 <main id="root"></main>
 <div id="toast" class="toast" hidden></div>
 <script src="app.js"></script>
