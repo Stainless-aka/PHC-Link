@@ -35,7 +35,7 @@ async function facilityWorkspace() {
   const root=document.getElementById("root");
   root.innerHTML='<div class="dashboard"><p class="sub">Checking your staff session…</p></div>';
   try {
-    const me=await api("/api/auth/me"); STATE.user=me.user;
+    const me=await api("/api/auth/me"); STATE.user=me.user;\n    const adminToggle=document.getElementById("vDash"); if(adminToggle) adminToggle.hidden=STATE.user.role!=="system_admin";
     if(STATE.user.role==="system_admin"){
       root.innerHTML='<section class="panel setup-panel"><h2>Administrator account</h2><p class="sub">This account manages PHC Link administration. Facility tools are reserved for registered health workers and clinicians.</p><button class="btn" type="button" onclick="setView(\'dash\')">Open administration</button></section>'; return;
     }
@@ -60,7 +60,7 @@ async function facilityWorkspace() {
     const nav=[["home","Home","index.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["ussd","USSD","ussd.html"]];
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></header><div class="net"><span id="apiStatus">Authenticated session</span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+label+'</a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
   } catch(error) {
-    if(error.message==="Authentication required."){STATE.user=null;root.innerHTML=facilityLoginView();}
+    if(error.message==="Authentication required."){STATE.user=null;const adminToggle=document.getElementById("vDash");if(adminToggle)adminToggle.hidden=false;root.innerHTML=facilityLoginView();}
     else root.innerHTML='<section class="panel"><h2>Facility workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="render()">Retry</button></section>';
   }
 }
@@ -159,7 +159,7 @@ async function handleSubmit(event) {
   try{await api(config[0],{method:"POST",body:JSON.stringify(config[1](formData(form)))});notify("Record saved successfully.");await dashboardView();}
   catch(error){notify(error.message,true);}
 }
-document.addEventListener("submit",handleSubmit);
+document.addEventListener("submit",handleSubmit);\ndocument.addEventListener("change",event=>{if(event.target.id==="facilityPicker"){STATE.facilityId=event.target.value;facilityWorkspace();}});
 document.addEventListener("click",async event=>{
   if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")){
     try{await api("/api/auth/logout",{method:"POST"});STATE.user=null;STATE.facilityId=null;notify("Signed out.");render();}
