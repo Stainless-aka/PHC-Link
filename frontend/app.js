@@ -1,7 +1,8 @@
 /* PHC Link: live API-backed administration and facility shell. */
 const PAGE = document.body.dataset.page || "home";
+const WORKSPACE = document.body.dataset.workspace || "login";
 const API_BASE_URL = "";
-const STATE = { view:"app", page:PAGE, admin:null, user:null, facilityId:null, busy:false };
+const STATE = { page:PAGE, admin:null, user:null, facilityId:null, busy:false };
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
@@ -22,12 +23,6 @@ function notify(message, error=false) {
   toast.style.background=error?"#8b3434":"#142f43";
   clearTimeout(notify.timer); notify.timer=setTimeout(()=>toast.hidden=true,4500);
 }
-function setView(view) {
-  STATE.view=view;
-  document.getElementById("vApp")?.setAttribute("aria-pressed",String(view==="app"));
-  document.getElementById("vDash")?.setAttribute("aria-pressed",String(view==="dash"));
-  render();
-}
 function facilityLoginView() {
   return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FACILITY WORKSPACE</div><h2>Staff sign in</h2><p class="sub">Registered health workers and clinicians can access their assigned facility after signing in.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in to facility</button></form></div></section>';
 }
@@ -35,10 +30,8 @@ async function facilityWorkspace() {
   const root=document.getElementById("root");
   root.innerHTML='<div class="dashboard"><p class="sub">Checking your staff session…</p></div>';
   try {
-    const me=await api("/api/auth/me"); STATE.user=me.user;\n    const adminToggle=document.getElementById("vDash"); if(adminToggle) adminToggle.hidden=STATE.user.role!=="system_admin";
-    if(STATE.user.role==="system_admin"){
-      root.innerHTML='<section class="panel setup-panel"><h2>Administrator account</h2><p class="sub">This account manages PHC Link administration. Facility tools are reserved for registered health workers and clinicians.</p><button class="btn" type="button" onclick="setView(\'dash\')">Open administration</button></section>'; return;
-    }
+    const me=await api("/api/auth/me"); STATE.user=me.user;
+    if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
     if(!["health_worker","clinician"].includes(STATE.user.role)){
       root.innerHTML='<section class="panel setup-panel"><h2>Workspace not available</h2><p class="sub">Your account role does not have access to the facility workspace. Contact the system administrator.</p><button class="btn sec" id="staffLogout" type="button">Sign out</button></section>'; return;
     }
@@ -57,10 +50,10 @@ async function facilityWorkspace() {
     } else if(STATE.page==="ussd") content+='<p class="sub">USSD and SMS integrations have not yet been configured.</p>';
     else content+='<div class="kpis"><article class="kpi"><div class="kpi-copy"><span>Assigned facilities</span><b>'+facilities.length+'</b><small>Facilities linked to your account</small></div></article><article class="kpi"><div class="kpi-copy"><span>Workspace role</span><b>'+escapeHtml(STATE.user.role==="health_worker"?"Health worker":"Clinician")+'</b><small>Access is limited to assigned facilities</small></div></article></div><p class="sub">Use the navigation to view stock balances and referrals for your assigned facility.</p>';
     content+='</section>';
-    const nav=[["home","Home","index.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["ussd","USSD","ussd.html"]];
+    const nav=[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["ussd","USSD","ussd.html"]];
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></header><div class="net"><span id="apiStatus">Authenticated session</span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+label+'</a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
   } catch(error) {
-    if(error.message==="Authentication required."){STATE.user=null;const adminToggle=document.getElementById("vDash");if(adminToggle)adminToggle.hidden=false;root.innerHTML=facilityLoginView();}
+    if(error.message==="Authentication required."){STATE.user=null;window.location.replace("index.html");}
     else root.innerHTML='<section class="panel"><h2>Facility workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="render()">Retry</button></section>';
   }
 }
@@ -81,7 +74,7 @@ function setupView(bootstrapConfigured) {
   return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FIRST-TIME CONFIGURATION</div><h2>Set up PHC Link</h2><p class="sub">Create the first system administrator and your initial state and LGA.</p></div></div><div class="panel setup-panel"><div class="banner">'+setupMessage+'</div><form id="bootstrapForm" class="admin-form">'+field("Bootstrap secret","bootstrapSecret","password",true,'autocomplete="off"')+field("Administrator full name","fullName")+field("Administrator email","email","email")+field("Administrator password (minimum 12 characters)","password","password",true,'minlength="12" autocomplete="new-password"')+field("State","stateName")+field("Local Government Area (LGA)","lgaName")+'<button class="btn" type="submit">Create system administrator</button></form></div></section>';
 }
 function loginView() {
-  return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">SECURE ADMINISTRATION</div><h2>Sign in</h2><p class="sub">Sign in with your PHC Link administrator account.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in</button></form></div></section>';
+  return '<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">SECURE ACCESS</div><h2>Welcome to PHC Link</h2><p class="sub">Sign in with your registered account. Your role determines which workspace opens.</p><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in</button></form><p class="auth-note">Access is restricted to authorised PHC Link users.</p></div></section>';
 }
 function adminWorkspace(data) {
   const stateOpts=options(data.states,"id",r=>r.name);
@@ -103,24 +96,41 @@ async function dashboardView() {
   const root=document.getElementById("root");
   root.innerHTML='<div class="dashboard"><p class="sub">Loading administration…</p></div>';
   try {
+    const me=await api("/api/auth/me"); STATE.user=me.user;
+    if(STATE.user.role!=="system_admin"){
+      if(["health_worker","clinician"].includes(STATE.user.role)) window.location.replace("facility.html");
+      else root.innerHTML='<section class="panel setup-panel"><h2>Access denied</h2><p class="sub">This account is not authorised to use system administration.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
+      return;
+    }
+    const data=await api("/api/admin/overview"); STATE.admin=data; root.innerHTML=adminWorkspace(data);
+  } catch(error) {
+    if(error.message==="Authentication required.") window.location.replace("index.html");
+    else root.innerHTML='<section class="panel"><h2>Administration unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="dashboardView()">Retry</button></section>';
+  }
+}
+async function loginPageView() {
+  const root=document.getElementById("root");
+  root.innerHTML='<div class="dashboard"><p class="sub">Checking account access…</p></div>';
+  try {
     const setup=await api("/api/setup/status",{headers:{}});
     if(!setup.initialized){root.innerHTML=setupView(setup.bootstrapConfigured);return;}
     try {
-      const me=await api("/api/auth/me");
-      STATE.user=me.user;
-      if(STATE.user.role!=="system_admin"){
-        root.innerHTML='<section class="panel setup-panel"><h2>Administration access restricted</h2><p class="sub">Only the system administrator can manage states, LGAs, facilities, staff accounts and the inventory catalogue.</p><button class="btn sec" type="button" onclick="setView(\'app\')">Return to facility workspace</button></section>'; return;
-      }
-      const data=await api("/api/admin/overview");
-      STATE.admin=data;
-      root.innerHTML=adminWorkspace(data);
+      const me=await api("/api/auth/me"), role=me.user.role;
+      if(role==="system_admin") window.location.replace("admin.html");
+      else if(["health_worker","clinician"].includes(role)) window.location.replace("facility.html");
+      else root.innerHTML='<section class="panel setup-panel"><h2>Workspace unavailable</h2><p class="sub">Your account role does not have a workspace yet. Contact the system administrator.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
     } catch(error) {
-      if(error.message==="Authentication required."){STATE.user=null;root.innerHTML=loginView();}
+      if(error.message==="Authentication required.") root.innerHTML=loginView();
       else throw error;
     }
   } catch(error) {
-    root.innerHTML='<section class="panel"><h2>Administration unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="setView(\'dash\')">Retry</button></section>';
+    root.innerHTML='<section class="panel"><h2>Sign in unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="loginPageView()">Retry</button></section>';
   }
+}
+function render() {
+  if(WORKSPACE==="admin") dashboardView();
+  else if(WORKSPACE==="facility") facilityWorkspace();
+  else loginPageView();
 }
 async function checkApiConnection() {
   const node=document.getElementById("apiStatus"); if(!node)return;
@@ -131,8 +141,7 @@ async function checkApiConnection() {
 }
 function render() {
   const root=document.getElementById("root"); if(!root)return;
-  if(STATE.view==="app"){root.innerHTML=appView();checkApiConnection();}
-  else dashboardView();
+  if(WORKSPACE==="admin") dashboardView(); else if(WORKSPACE==="facility") facilityWorkspace(); else loginPageView();
 }
 function formData(form){return Object.fromEntries(new FormData(form).entries());}
 async function handleSubmit(event) {
@@ -146,12 +155,12 @@ async function handleSubmit(event) {
   };
   if(form.id==="bootstrapForm"){
     event.preventDefault();const d=formData(form);
-    try{await api("/api/setup/bootstrap",{method:"POST",headers:{"x-bootstrap-secret":d.bootstrapSecret},body:JSON.stringify({fullName:d.fullName,email:d.email,password:d.password,stateName:d.stateName,lgaName:d.lgaName})});notify("Administrator created. Sign in now.");render();}
+    try{await api("/api/setup/bootstrap",{method:"POST",headers:{"x-bootstrap-secret":d.bootstrapSecret},body:JSON.stringify({fullName:d.fullName,email:d.email,password:d.password,stateName:d.stateName,lgaName:d.lgaName})});notify("Administrator created. Sign in now.");loginPageView();}
     catch(error){notify(error.message,true);}return;
   }
   if(form.id==="loginForm"){
     event.preventDefault();const d=formData(form);
-    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");render();}
+    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(["health_worker","clinician"].includes(result.user.role)?"facility.html":"index.html"));}
     catch(error){notify(error.message,true);}return;
   }
   const config=routes[form.id];if(!config)return;
@@ -162,7 +171,7 @@ async function handleSubmit(event) {
 document.addEventListener("submit",handleSubmit);\ndocument.addEventListener("change",event=>{if(event.target.id==="facilityPicker"){STATE.facilityId=event.target.value;facilityWorkspace();}});
 document.addEventListener("click",async event=>{
   if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")){
-    try{await api("/api/auth/logout",{method:"POST"});STATE.user=null;STATE.facilityId=null;notify("Signed out.");render();}
+    try{await api("/api/auth/logout",{method:"POST"});STATE.user=null;STATE.facilityId=null;notify("Signed out.");window.location.assign("index.html");}
     catch(error){notify(error.message,true);}
   }
 });
