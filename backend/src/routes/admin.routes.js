@@ -4,7 +4,7 @@ const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/require-auth');
 
 const router = express.Router();
-router.use(requireAuth, requireRole('system_admin', 'state_admin'));
+router.use(requireAuth, requireRole('system_admin'));
 
 router.get('/overview', async (req, res, next) => {
   try {
