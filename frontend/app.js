@@ -53,7 +53,7 @@ function options(rows,valueKey,labelFn) {
   return rows.map(row=>'<option value="'+escapeHtml(row[valueKey])+'">'+escapeHtml(labelFn(row))+'</option>').join("");
 }
 function setupView() {
-  return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FIRST-TIME CONFIGURATION</div><h2>Set up PHC Link</h2><p class="sub">Create the first system administrator and your initial state and LGA.</p></div></div><div class="panel setup-panel"><div class="banner">Before continuing, add a BOOTSTRAP_SECRET environment variable to the Render API service. Generate one with <code>openssl rand -hex 32</code>. Use the same value below.</div><form id="bootstrapForm" class="admin-form">'+field("Bootstrap secret","bootstrapSecret","password",true,'autocomplete="off"')+field("Administrator full name","fullName")+field("Administrator email","email","email")+field("Administrator password (minimum 12 characters)","password","password",true,'minlength="12" autocomplete="new-password"')+field("State","stateName")+field("Local Government Area (LGA)","lgaName")+'<button class="btn" type="submit">Create system administrator</button></form></div></section>';
+  return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FIRST-TIME CONFIGURATION</div><h2>Set up PHC Link</h2><p class="sub">Create the first system administrator and your initial state and LGA.</p></div></div><div class="panel setup-panel"><div class="banner">'+setupMessage+'</div><form id="bootstrapForm" class="admin-form">'+field("Bootstrap secret","bootstrapSecret","password",true,'autocomplete="off"')+field("Administrator full name","fullName")+field("Administrator email","email","email")+field("Administrator password (minimum 12 characters)","password","password",true,'minlength="12" autocomplete="new-password"')+field("State","stateName")+field("Local Government Area (LGA)","lgaName")+'<button class="btn" type="submit">Create system administrator</button></form></div></section>';
 }
 function loginView() {
   return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">SECURE ADMINISTRATION</div><h2>Sign in</h2><p class="sub">Sign in with your PHC Link administrator account.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in</button></form></div></section>';
@@ -79,7 +79,7 @@ async function dashboardView() {
   root.innerHTML='<div class="dashboard"><p class="sub">Loading administration…</p></div>';
   try {
     const setup=await api("/api/setup/status",{headers:{}});
-    if(!setup.initialized){root.innerHTML=setup.bootstrapConfigured?setupView():setupView().replace("Before continuing, add a BOOTSTRAP_SECRET environment variable to the Render API service. Generate one with <code>openssl rand -hex 32</code>. Use the same value below.","Initial setup is locked until BOOTSTRAP_SECRET is configured on the Render API service. Generate a value with <code>openssl rand -hex 32</code> and add it in Render → phc-link-api → Environment.");return;}
+    if(!setup.initialized){root.innerHTML=setupView(setup.bootstrapConfigured);return;}
     try {
       const me=await api("/api/auth/me");
       STATE.user=me.user;
