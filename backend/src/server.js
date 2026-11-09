@@ -10,6 +10,8 @@ const authRoutes = require('./routes/auth.routes');
 const facilityRoutes = require('./routes/facilities.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const referralRoutes = require('./routes/referrals.routes');
+const setupRoutes = require('./routes/setup.routes');
+const adminRoutes = require('./routes/admin.routes');
 const { notFound, errorHandler } = require('./middleware/error-handler');
 
 const required = ['DATABASE_URL', 'SESSION_SECRET'];
@@ -36,7 +38,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     secure: process.env.COOKIE_SECURE === 'true',
-    sameSite: 'lax',
+    sameSite: 'none',
     maxAge: 1000 * 60 * 60 * 8
   }
 }));
@@ -50,6 +52,8 @@ app.get('/api/health', async (req, res, next) => {
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/setup', setupRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/inventory', inventoryRoutes);
