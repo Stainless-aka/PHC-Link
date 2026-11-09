@@ -37,3 +37,14 @@ The API runs separately from the current static prototype in `frontend/`. Fronte
 ## Important
 
 This is an initial development foundation, not a production-ready clinical system. Do not enter real patient information. Before a live pilot, add automated tests, negative-stock safeguards, full audit logging, CSRF protection appropriate to the deployment, security review, backup/restore verification, data-protection controls and a validated clinical referral workflow.
+
+
+## First-time administrator setup
+
+1. Generate a private setup key locally with `openssl rand -hex 32`.
+2. In Render, open the `phc-link-api` service → **Environment** and add `BOOTSTRAP_SECRET` with that generated value. Save changes and wait for the service to restart.
+3. Open the PHC Link website and select **Administration**.
+4. Complete the first-time setup form with the same setup key, your administrator details, and the initial state and LGA.
+5. Sign in with the administrator email and password you created. The setup endpoint becomes permanently unavailable after the first user is created.
+
+Keep the setup key private. It is only needed for this one-time bootstrap; do not commit it to Git or place it in frontend source code.
