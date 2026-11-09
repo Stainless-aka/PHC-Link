@@ -52,7 +52,7 @@ router.post('/facilities', async (req,res,next) => {
 router.post('/users', async (req,res,next) => {
   try {
     const {fullName,email,password,role,facilityId,lgaId,phone=null}=req.body;
-    const allowed=['health_worker','clinician','lga_officer','state_admin'];
+    const allowed=['health_worker','clinician','lga_officer'];
     if(!String(fullName||'').trim()||!String(email||'').trim()||!password||password.length<12||!allowed.includes(role))
       return res.status(400).json({error:'Name, email, role and a password of at least 12 characters are required.'});
     if(role==='health_worker'||role==='clinician'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
