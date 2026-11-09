@@ -55,7 +55,7 @@ router.get('/balances', async (req, res, next) => {
   finally { client.release(); }
 });
 
-router.post('/movements', requireRole('health_worker', 'lga_officer', 'state_admin', 'system_admin'), async (req, res, next) => {
+router.post('/movements', requireRole('health_worker', 'clinician', 'lga_officer', 'state_admin', 'system_admin'), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const {
