@@ -1,6 +1,6 @@
 /* PHC Link: live API-backed administration and facility shell. */
 const PAGE = document.body.dataset.page || "home";
-const API_BASE_URL = "https://phc-link-api.onrender.com";
+const API_BASE_URL = "";
 const STATE = { view:"app", page:PAGE, admin:null, user:null, busy:false };
 
 function escapeHtml(value) {
