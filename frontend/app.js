@@ -63,7 +63,7 @@ function adminWorkspace(data) {
   const stateOpts=options(data.states,"id",r=>r.name);
   const lgaOpts=options(data.lgas,"id",r=>r.name+" — "+r.state_name);
   const facilityOpts=options(data.facilities,"id",r=>r.name+" — "+r.lga_name);
-  const roleOpts='<option value="health_worker">Health worker</option><option value="clinician">Clinician</option><option value="lga_officer">LGA officer</option><option value="state_admin">State administrator</option>';
+  const roleOpts='<option value="health_worker">Health worker</option><option value="clinician">Clinician</option><option value="lga_officer">LGA officer</option>';
   const cards=[["States",data.states.length],["LGAs",data.lgas.length],["Facilities",data.facilities.length],["Users",data.users.length],["Inventory items",data.items.length]];
   const kpis=cards.map(([label,count])=>'<article class="kpi"><div class="kpi-copy"><span>'+label+'</span><b>'+count+'</b><small>Live database records</small></div></article>').join("");
   const list=(rows,columns)=>rows.length?'<div class="table-wrap"><table><thead><tr>'+columns.map(c=>'<th>'+c[0]+'</th>').join("")+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+columns.map(c=>'<td>'+escapeHtml(c[1](row))+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>':'<p class="empty-state">No records have been added yet.</p>';
