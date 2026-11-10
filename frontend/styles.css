@@ -27,3 +27,6 @@ label{display:block;margin:14px 0 6px;color:#405563;font-size:11px;font-weight:7
 
 /* Dedicated role-aware sign-in page */
 .auth-shell{min-height:calc(100vh - 120px);display:grid;place-items:center;padding:34px 16px}.auth-card{width:min(100%,440px);padding:34px;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}.auth-mark{width:44px;height:44px;display:grid;place-items:center;margin-bottom:22px;border-radius:10px;background:var(--navy);color:#fff;font:800 28px Manrope,sans-serif}.auth-card .eyebrow{margin-bottom:8px;color:var(--teal);font-size:10px;font-weight:800;letter-spacing:.12em}.auth-card h2{font-size:25px;margin-bottom:8px}.auth-card .sub{line-height:1.7;margin-bottom:25px}.auth-card .admin-form{display:grid;gap:10px}.auth-card .admin-form label{margin-top:5px}.auth-card .admin-form .btn{width:100%;margin-top:12px}.auth-note{margin:20px 0 0;padding-top:15px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}@media(max-width:520px){.auth-card{padding:25px 20px}.auth-shell{padding:20px 10px}}
+
+/* Facility data-entry forms */
+.admin-panel .admin-form{margin-top:4px}.admin-panel .admin-form label{margin-top:9px}.admin-panel .admin-form .btn{margin-top:14px}.admin-panel+.admin-panel{margin-top:14px}
