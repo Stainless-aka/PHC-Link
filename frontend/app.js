@@ -42,11 +42,22 @@ async function facilityWorkspace() {
     const selected=facilities.find(f=>f.id===STATE.facilityId)||facilities[0]; STATE.facilityId=selected.id;
     let content='<section class="panel"><h2>'+({home:"Facility overview",stock:"Stock management",ref:"Referrals",ussd:"USSD & SMS"}[STATE.page]||"Facility overview")+'</h2><p class="sub">'+escapeHtml(selected.name)+' · '+escapeHtml(selected.lga_name)+', '+escapeHtml(selected.state_name)+'</p>';
     if(STATE.page==="stock"){
-      const data=await api("/api/inventory/balances?facilityId="+encodeURIComponent(selected.id)), rows=data.balances||[];
-      content+='<div class="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Available balance</th><th>Unit</th></tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.name)+'</td><td>'+escapeHtml(r.category)+'</td><td>'+escapeHtml(r.quantity)+'</td><td>'+escapeHtml(r.unit)+'</td></tr>').join(""):'<tr><td colspan="4">No inventory catalogue items available yet.</td></tr>')+'</tbody></table></div>';
+      const [data,catalogue]=await Promise.all([
+        api("/api/inventory/balances?facilityId="+encodeURIComponent(selected.id)),
+        api("/api/inventory/items")
+      ]);
+      const rows=data.balances||[], items=catalogue.items||[];
+      const itemOptions=options(items,"id",r=>r.name+" · "+r.category+" ("+r.unit+")");
+      const movementOptions='<option value="RECEIVED">Receive stock</option><option value="DISPENSED">Dispense stock</option><option value="ADJUSTMENT">Adjust balance</option><option value="TRANSFER_IN">Transfer in</option><option value="TRANSFER_OUT">Transfer out</option><option value="EXPIRED">Record expired stock</option><option value="DAMAGED">Record damaged stock</option>';
+      content+='<section class="panel admin-panel"><div class="panel-head"><div><h3>Record stock movement</h3><p>Every entry is recorded in the facility stock ledger.</p></div></div>'+(items.length?'<form id="stockMovementForm" class="admin-form">'+selectField("Inventory item","itemId",itemOptions)+selectField("Movement type","movementType",movementOptions)+field("Quantity","quantity","number",true,'min="0.01" step="0.01"')+selectField("Adjustment direction","adjustmentDirection",'<option value="increase">Increase</option><option value="decrease">Decrease</option>',"Choose direction",false)+field("Batch number (optional)","batchNumber","text",false)+field("Expiry date (optional)","expiryDate","date",false)+'<label for="movementNote">Reason / note</label><input id="movementNote" name="note" maxlength="500" placeholder="Required for adjustments; optional otherwise"><button class="btn" type="submit">Save stock movement</button></form>':'<p class="empty-state">No inventory items have been added yet. Ask the system administrator to add items to the catalogue.</p>')+'</section><section class="panel admin-panel"><div class="panel-head"><div><h3>Available stock</h3><p>Current calculated balances for this facility</p></div><span class="count-label">'+rows.length+' items</span></div><div class="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Available balance</th><th>Unit</th></tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.name)+'</td><td>'+escapeHtml(r.category)+'</td><td>'+escapeHtml(r.quantity)+'</td><td>'+escapeHtml(r.unit)+'</td></tr>').join(""):'<tr><td colspan="4">No inventory catalogue items available yet.</td></tr>')+'</tbody></table></div></section>';
     } else if(STATE.page==="ref"){
-      const data=await api("/api/referrals?facilityId="+encodeURIComponent(selected.id)), rows=data.referrals||[];
-      content+='<div class="table-wrap"><table><thead><tr><th>Referral code</th><th>Origin</th><th>Destination</th><th>Urgency</th><th>Status</th></tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.referral_code)+'</td><td>'+escapeHtml(r.origin_facility)+'</td><td>'+escapeHtml(r.destination_facility)+'</td><td>'+escapeHtml(r.urgency)+'</td><td>'+escapeHtml(r.status)+'</td></tr>').join(""):'<tr><td colspan="5">No referrals recorded for this facility.</td></tr>')+'</tbody></table></div>';
+      const [data,destinations]=await Promise.all([
+        api("/api/referrals?facilityId="+encodeURIComponent(selected.id)),
+        api("/api/facilities/referral-destinations?originFacilityId="+encodeURIComponent(selected.id))
+      ]);
+      const rows=data.referrals||[], targets=destinations.facilities||[];
+      const targetOptions=options(targets,"id",r=>r.name+" · "+r.lga_name);
+      content+='<section class="panel admin-panel"><div class="panel-head"><div><h3>Create referral</h3><p>Send a referral from your assigned facility to another facility.</p></div></div>'+(targets.length?'<form id="referralForm" class="admin-form">'+selectField("Destination facility","destinationFacilityId",targetOptions)+field("Reason for referral","reasonCode","text",true,'maxlength="100" placeholder="e.g. Maternal complication"')+selectField("Urgency","urgency",'<option value="routine">Routine</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option>')+field("Patient age in years (optional)","patientAgeYears","number",false,'min="0" max="120" step="1"')+selectField("Patient sex (optional)","patientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+'<button class="btn" type="submit">Create referral</button></form>':'<p class="empty-state">No other active facilities are available in this state yet. Ask the administrator to register the receiving facility.</p>')+'</section><section class="panel admin-panel"><div class="panel-head"><div><h3>Referral records</h3><p>Referrals sent from or received by this facility</p></div><span class="count-label">'+rows.length+' records</span></div><div class="table-wrap"><table><thead><tr><th>Referral code</th><th>Origin</th><th>Destination</th><th>Urgency</th><th>Status</th></tr></thead><tbody>'+(rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.referral_code)+'</td><td>'+escapeHtml(r.origin_facility)+'</td><td>'+escapeHtml(r.destination_facility)+'</td><td>'+escapeHtml(r.urgency)+'</td><td><span class="pill '+(r.status==="completed"?"ok":(r.status==="rejected"||r.status==="cancelled"?"out":"q"))+'">'+escapeHtml(r.status)+'</span></td></tr>').join(""):'<tr><td colspan="5">No referrals recorded for this facility.</td></tr>')+'</tbody></table></div></section>';
     } else if(STATE.page==="ussd") content+='<p class="sub">USSD and SMS integrations have not yet been configured.</p>';
     else content+='<div class="kpis"><article class="kpi"><div class="kpi-copy"><span>Assigned facilities</span><b>'+facilities.length+'</b><small>Facilities linked to your account</small></div></article><article class="kpi"><div class="kpi-copy"><span>Workspace role</span><b>'+escapeHtml(STATE.user.role==="health_worker"?"Health worker":"Clinician")+'</b><small>Access is limited to assigned facilities</small></div></article></div><p class="sub">Use the navigation to view stock balances and referrals for your assigned facility.</p>';
     content+='</section>';
@@ -158,6 +169,22 @@ async function handleSubmit(event) {
     event.preventDefault();const d=formData(form);
     try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(["health_worker","clinician"].includes(result.user.role)?"facility.html":"index.html"));}
     catch(error){notify(error.message,true);}return;
+  }
+  if(form.id==="stockMovementForm"){
+    event.preventDefault();
+    const d=formData(form);
+    const payload={operationId:crypto.randomUUID(),facilityId:STATE.facilityId,itemId:d.itemId,movementType:d.movementType,quantity:Number(d.quantity),adjustmentDirection:d.adjustmentDirection||"increase",batchNumber:d.batchNumber||null,expiryDate:d.expiryDate||null,note:d.note||null};
+    try{await api("/api/inventory/movements",{method:"POST",body:JSON.stringify(payload)});notify("Stock movement recorded.");await facilityWorkspace();}
+    catch(error){notify(error.message,true);}
+    return;
+  }
+  if(form.id==="referralForm"){
+    event.preventDefault();
+    const d=formData(form);
+    const payload={operationId:crypto.randomUUID(),originFacilityId:STATE.facilityId,destinationFacilityId:d.destinationFacilityId,reasonCode:d.reasonCode.trim(),urgency:d.urgency,patientAgeYears:d.patientAgeYears===""?null:Number(d.patientAgeYears),patientSex:d.patientSex||null};
+    try{const result=await api("/api/referrals",{method:"POST",body:JSON.stringify(payload)});notify("Referral created: "+result.referral.referral_code);await facilityWorkspace();}
+    catch(error){notify(error.message,true);}
+    return;
   }
   const config=routes[form.id];if(!config)return;
   event.preventDefault();
