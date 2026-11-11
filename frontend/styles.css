@@ -136,3 +136,11 @@ body[data-workspace="admin"]>.top{display:none}
 @media(max-width:900px){.admin-app{grid-template-columns:1fr}.admin-sidebar{position:relative;height:auto;padding:13px 17px}.admin-side-brand{padding:0 5px 13px}.admin-side-label,.admin-sidebar-bottom{display:none}.admin-nav{display:flex;overflow-x:auto;padding-bottom:2px}.admin-nav a{flex:none;min-height:38px;padding:0 11px;font-size:10px}.admin-nav a span{font-size:14px}.admin-topbar{height:58px}.admin-content{padding-top:25px}}
 @media(max-width:650px){.admin-welcome{align-items:flex-start;flex-direction:column}.admin-welcome h2{font-size:23px}.admin-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:29px}.admin-kpi{padding:12px}.admin-kpi>strong{font-size:23px}.admin-forms-grid,.admin-directory-grid{grid-template-columns:1fr}.admin-forms-grid .admin-panel:nth-child(4){grid-row:auto}.admin-section-heading{align-items:flex-start;flex-direction:column}.admin-account>span:last-child{display:none}.admin-topbar{padding:0 16px}.admin-content{padding:21px 13px}.admin-footer{flex-direction:column}.admin-table-panel{padding:12px}.admin-table-panel td{white-space:normal}.admin-table-panel .role-edit{min-width:210px}}
 @media(max-width:390px){.admin-kpis{grid-template-columns:1fr 1fr}.admin-forms-grid .admin-form{grid-template-columns:1fr}.admin-forms-grid .admin-form label,.admin-forms-grid .admin-form input,.admin-forms-grid .admin-form select,.admin-forms-grid .admin-form .btn{grid-column:1}}
+
+.admin-table-panel .admin-assign-control{display:flex;align-items:center;gap:6px;min-width:230px}
+.admin-table-panel .admin-assign-control select{min-width:145px;min-height:31px;padding:5px 8px;border-radius:6px;font-size:9px}
+.admin-table-panel .admin-assign-control .btn{min-height:31px}
+.admin-assigned-facilities{display:flex;flex-wrap:wrap;gap:5px;min-width:140px}
+.admin-facility-chip{display:inline-block;padding:5px 7px;border:1px solid #dcebe8;border-radius:5px;background:#f0f8f6;color:#34796f;font-size:9px;font-weight:700}
+.admin-unassigned,.admin-muted{color:#9a8580;font-size:9px}
+@media(max-width:650px){.admin-table-panel .admin-assign-control{min-width:220px}}
