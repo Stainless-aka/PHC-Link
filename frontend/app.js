@@ -40,7 +40,7 @@ async function facilityWorkspace() {
       root.innerHTML='<section class="panel setup-panel"><h2>No facility assigned</h2><p class="sub">Your account is active, but no facility has been assigned. Contact the system administrator.</p><button class="btn sec" id="staffLogout" type="button">Sign out</button></section>'; return;
     }
     const selected=facilities.find(f=>f.id===STATE.facilityId)||facilities[0]; STATE.facilityId=selected.id;
-    let content='<section class="panel"><h2>'+({home:"Facility overview",stock:"Stock management",ref:"Referrals",ussd:"USSD & SMS"}[STATE.page]||"Facility overview")+'</h2><p class="sub">'+escapeHtml(selected.name)+' · '+escapeHtml(selected.lga_name)+', '+escapeHtml(selected.state_name)+'</p>';
+    let content='<section class="panel"><h2>'+({home:"Facility overview",stock:"Stock management",ref:"Referrals",patients:"Patient management",ussd:"USSD & SMS"}[STATE.page]||"Facility overview")+'</h2><p class="sub">'+escapeHtml(selected.name)+' · '+escapeHtml(selected.lga_name)+', '+escapeHtml(selected.state_name)+'</p>';
     if(STATE.page==="stock"){
       const [data,catalogue]=await Promise.all([
         api("/api/inventory/balances?facilityId="+encodeURIComponent(selected.id)),
