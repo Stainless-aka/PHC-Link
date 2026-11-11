@@ -79,6 +79,7 @@ router.post('/users', async (req,res,next) => {
 
 
 router.patch('/users/:userId/role', async (req,res,next)=>{
+  if(req.params.userId===req.session.user.id)return res.status(400).json({error:'You cannot change your own administrator role.'});
   const allowed=['health_worker','clinician','lga_officer','state_admin','system_admin'];
   const role=String(req.body.role||'');
   if(!allowed.includes(role))return res.status(400).json({error:'Select a valid account role.'});
