@@ -50,16 +50,10 @@ router.post('/', async (req, res, next) => {
   try {
     const {
       operationId = randomUUID(), originFacilityId, destinationFacilityId,
-      patientAgeYears = null, patientSex = null, reasonCode, urgency = 'routine'
+      patientId, reasonCode, urgency = 'routine'
     } = req.body;
-    if (!originFacilityId || !destinationFacilityId || !reasonCode || !['routine', 'urgent', 'emergency'].includes(urgency)) {
-      return res.status(400).json({ error: 'Origin, destination, reason and valid urgency are required.' });
-    }
-    if (patientAgeYears !== null && (!Number.isInteger(Number(patientAgeYears)) || Number(patientAgeYears) < 0 || Number(patientAgeYears) > 120)) {
-      return res.status(400).json({ error: 'Patient age must be between 0 and 120.' });
-    }
-    if (patientSex !== null && !['female', 'male', 'unknown'].includes(patientSex)) {
-      return res.status(400).json({ error: 'Invalid patient sex value.' });
+    if (!originFacilityId || !destinationFacilityId || !patientId || !reasonCode || !['routine', 'urgent', 'emergency'].includes(urgency)) {
+      return res.status(400).json({ error: 'Origin, destination, patient, reason and valid urgency are required.' });
     }
 
     await client.query('BEGIN');
@@ -72,10 +66,19 @@ router.post('/', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.json({ duplicate: true, referral: duplicate.rows[0] });
     }
+    if (originFacilityId === destinationFacilityId) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Choose a different destination facility.' });
+    }
     const destination = await client.query('SELECT id FROM facilities WHERE id = $1 AND is_active = TRUE', [destinationFacilityId]);
     if (!destination.rowCount) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Destination facility not found.' });
+    }
+    const patient = await client.query('SELECT id FROM patients WHERE id = $1 AND facility_id = $2', [patientId, originFacilityId]);
+    if (!patient.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Select a patient registered at your assigned facility.' });
     }
     const code = `PHC-${randomUUID().slice(0, 8).toUpperCase()}`;
     const created = await client.query(
