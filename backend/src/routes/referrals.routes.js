@@ -32,11 +32,12 @@ router.get('/', async (req, res, next) => {
     }
     const result = await client.query(
       `SELECT r.id, r.referral_code, r.origin_facility_id, r.destination_facility_id,
-              r.patient_age_years, r.patient_sex, r.reason_code, r.urgency,
+              r.patient_id, p.patient_code, p.full_name AS patient_name, r.reason_code, r.urgency,
               r.status, r.created_at, r.updated_at,
               src.name AS origin_facility, dst.name AS destination_facility
        FROM referrals r JOIN facilities src ON src.id = r.origin_facility_id
        JOIN facilities dst ON dst.id = r.destination_facility_id
+       LEFT JOIN patients p ON p.id = r.patient_id
        WHERE r.origin_facility_id = $1 OR r.destination_facility_id = $1
        ORDER BY r.created_at DESC LIMIT 100`, [facilityId]
     );
