@@ -39,7 +39,7 @@ router.post('/signup', async (req, res, next) => {
     const password=String(req.body.password||'');
     if(!fullName||!email||!password) return res.status(400).json({error:'Full name, email and password are required.'});
     if(fullName.length>160||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:'Enter a valid name and email address.'});
-    if(password.length<12) return res.status(400).json({error:'Password must contain at least 12 characters.'});
+    if(!/^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}$/.test(password)) return res.status(400).json({error:'Password must be at least 8 characters and contain letters and numbers only.'});
     const hash=await bcrypt.hash(password,12);
     const created=await pool.query("INSERT INTO users(full_name,email,password_hash,role) VALUES($1,$2,$3,'health_worker') RETURNING id,full_name,email,role",[fullName,email,hash]);
     await pool.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,'USER_SELF_REGISTERED','user',$1)",[created.rows[0].id]);
