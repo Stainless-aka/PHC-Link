@@ -77,6 +77,24 @@ router.post('/users', async (req,res,next) => {
   }catch(error){next(error);}
 });
 
+
+router.patch('/users/:userId/role', async (req,res,next)=>{
+  const allowed=['health_worker','clinician','lga_officer','state_admin','system_admin'];
+  const role=String(req.body.role||'');
+  if(!allowed.includes(role))return res.status(400).json({error:'Select a valid account role.'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const updated=await client.query('UPDATE users SET role=$1,updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active',[role,req.params.userId]);
+    if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
+    if(role==='lga_officer')await client.query('DELETE FROM facility_users WHERE user_id=$1',[req.params.userId]);
+    else await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
+    await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_ROLE_CHANGED','user',req.params.userId,JSON.stringify({role})]);
+    await client.query('COMMIT');res.json({user:updated.rows[0]});
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});next(error);}
+  finally{client.release();}
+});
+
 router.post('/inventory-items', async(req,res,next)=>{
   try{
     const {name,category,unit,minimumStock=0}=req.body;
