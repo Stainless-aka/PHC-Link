@@ -30,3 +30,15 @@ label{display:block;margin:14px 0 6px;color:#405563;font-size:11px;font-weight:7
 
 /* Facility data-entry forms */
 .admin-panel .admin-form{margin-top:4px}.admin-panel .admin-form label{margin-top:9px}.admin-panel .admin-form .btn{margin-top:14px}.admin-panel+.admin-panel{margin-top:14px}
+
+.password-wrap{position:relative;grid-column:span 2;display:flex;align-items:center}
+.password-wrap input{padding-right:48px}
+.password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:5px;background:transparent;color:#71838f}
+.password-toggle:hover{background:#f0f4f6;color:var(--navy)}
+.password-toggle svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.password-toggle.is-visible{color:var(--teal)}
+.auth-switch{margin:17px 0 0;text-align:center;color:var(--muted);font-size:11px}
+.auth-switch button{padding:0;border:0;background:none;color:var(--teal);font-weight:700;text-decoration:underline}
+.role-edit{display:flex;align-items:center;gap:6px;min-width:190px}
+.role-edit select{min-width:120px;min-height:32px;padding:5px;font-size:10px}
+@media(max-width:520px){.password-wrap{grid-column:1}.role-edit{min-width:175px}}
