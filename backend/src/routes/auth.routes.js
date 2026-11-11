@@ -31,6 +31,22 @@ router.post('/login', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+
+router.post('/signup', async (req, res, next) => {
+  try {
+    const fullName=String(req.body.fullName||'').trim();
+    const email=String(req.body.email||'').trim().toLowerCase();
+    const password=String(req.body.password||'');
+    if(!fullName||!email||!password) return res.status(400).json({error:'Full name, email and password are required.'});
+    if(fullName.length>160||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({error:'Enter a valid name and email address.'});
+    if(password.length<12) return res.status(400).json({error:'Password must contain at least 12 characters.'});
+    const hash=await bcrypt.hash(password,12);
+    const created=await pool.query("INSERT INTO users(full_name,email,password_hash,role) VALUES($1,$2,$3,'health_worker') RETURNING id,full_name,email,role",[fullName,email,hash]);
+    await pool.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,'USER_SELF_REGISTERED','user',$1)",[created.rows[0].id]);
+    res.status(201).json({message:'Account created. Sign in after an administrator assigns your facility.',user:created.rows[0]});
+  }catch(error){if(error.code==='23505')return res.status(409).json({error:'An account with that email already exists.'});next(error);}
+});
+
 router.get('/me', requireAuth, (req, res) => res.json({ user: req.session.user }));
 
 router.post('/logout', (req, res, next) => {
