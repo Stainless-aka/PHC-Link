@@ -231,3 +231,36 @@ document.addEventListener("click",async event=>{
   }
 });
 render();
+
+function initTheme() {
+  const stored = localStorage.getItem("phc-link-theme");
+  const preferred = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  const apply = theme => {
+    document.documentElement.dataset.theme = theme;
+    const button = document.getElementById("themeToggle");
+    if (button) {
+      button.innerHTML = theme === "dark" ? '<span aria-hidden="true">☀</span><span>Light mode</span>' : '<span aria-hidden="true">☾</span><span>Dark mode</span>';
+      button.setAttribute("aria-label", theme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+      button.title = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === "dark" ? "#101b25" : "#ffffff";
+  };
+  const initial = stored === "dark" || stored === "light" ? stored : preferred;
+  apply(initial);
+  if (!document.getElementById("themeToggle")) {
+    const button = document.createElement("button");
+    button.id = "themeToggle";
+    button.className = "theme-toggle";
+    button.type = "button";
+    button.addEventListener("click", () => {
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      localStorage.setItem("phc-link-theme", next);
+      apply(next);
+    });
+    document.body.appendChild(button);
+    apply(initial);
+  }
+}
+
+initTheme();
