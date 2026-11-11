@@ -12,7 +12,7 @@ router.get('/overview', async (req, res, next) => {
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
       pool.query('SELECT f.id,f.name,f.code,f.lga_id,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
-      pool.query('SELECT id,full_name,email,role,phone,is_active FROM users ORDER BY full_name'),
+      pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.phone,u.is_active, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
       pool.query('SELECT id,name,category,unit,default_minimum_stock FROM inventory_items WHERE is_active=TRUE ORDER BY category,name'),
       pool.query('SELECT count(*)::int AS count FROM referrals')
     ]);
@@ -75,6 +75,27 @@ router.post('/users', async (req,res,next) => {
     }catch(error){await client.query('ROLLBACK').catch(()=>{});if(error.code==='23505')return res.status(409).json({error:'An account with that email already exists.'});if(error.code==='23503')return res.status(404).json({error:'Selected facility or LGA was not found.'});throw error;}
     finally{client.release();}
   }catch(error){next(error);}
+});
+
+
+router.post('/users/:userId/facilities', async (req,res,next)=>{
+  const facilityId=String(req.body.facilityId||'').trim();
+  if(!facilityId)return res.status(400).json({error:'Select a facility to assign.'});
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const user=await client.query('SELECT id,role FROM users WHERE id=$1 FOR UPDATE',[req.params.userId]);
+    if(!user.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
+    if(!['health_worker','clinician'].includes(user.rows[0].role)){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers and clinicians.'});}
+    const facility=await client.query('SELECT id FROM facilities WHERE id=$1 AND is_active=TRUE',[facilityId]);
+    if(!facility.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Active facility not found.'});}
+    await client.query('INSERT INTO facility_users(facility_id,user_id,is_active) VALUES($1,$2,TRUE) ON CONFLICT(facility_id,user_id) DO UPDATE SET is_active=TRUE,assigned_at=NOW()',[facilityId,req.params.userId]);
+    await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_FACILITY_ASSIGNED','user',req.params.userId,JSON.stringify({facilityId})]);
+    const assignments=await client.query('SELECT f.id,f.name FROM facility_users fu JOIN facilities f ON f.id=fu.facility_id WHERE fu.user_id=$1 AND fu.is_active=TRUE AND f.is_active=TRUE ORDER BY f.name',[req.params.userId]);
+    await client.query('COMMIT');
+    res.json({facilities:assignments.rows});
+  }catch(error){await client.query('ROLLBACK').catch(()=>{});next(error);}
+  finally{client.release();}
 });
 
 
