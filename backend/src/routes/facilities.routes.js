@@ -19,7 +19,7 @@ router.get('/', async (req, res, next) => {
     }
     const result = await pool.query(
       `SELECT f.id, f.name, f.code, f.address, f.latitude, f.longitude,
-              l.name AS lga_name, origin_state.name AS state_name
+              l.name AS lga_name, s.name AS state_name
        FROM facilities f JOIN lgas l ON l.id = f.lga_id
        JOIN states s ON s.id = l.state_id ${where}
        ORDER BY s.name, l.name, f.name`, params
@@ -51,7 +51,7 @@ router.get('/referral-destinations', async (req, res, next) => {
     }
     if (!access.rowCount) return res.status(403).json({ error: 'You cannot create referrals from this facility.' });
     const result = await client.query(
-      `SELECT f.id, f.name, l.name AS lga_name, s.name AS state_name
+      `SELECT f.id, f.name, l.name AS lga_name, origin_state.name AS state_name
        FROM facilities origin
        JOIN lgas origin_lga ON origin_lga.id = origin.lga_id
        JOIN states origin_state ON origin_state.id = origin_lga.state_id
