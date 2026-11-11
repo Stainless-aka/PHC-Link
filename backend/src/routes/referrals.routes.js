@@ -81,10 +81,10 @@ router.post('/', async (req, res, next) => {
     const created = await client.query(
       `INSERT INTO referrals
        (referral_code, origin_facility_id, destination_facility_id, created_by,
-        patient_age_years, patient_sex, reason_code, urgency, status, operation_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'submitted',$9)
-       RETURNING id, referral_code, origin_facility_id, destination_facility_id, urgency, status, created_at`,
-      [code, originFacilityId, destinationFacilityId, req.session.user.id, patientAgeYears, patientSex, reasonCode, urgency, operationId]
+        patient_id, reason_code, urgency, status, operation_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'submitted',$8)
+       RETURNING id, referral_code, origin_facility_id, destination_facility_id, patient_id, urgency, status, created_at`,
+      [code, originFacilityId, destinationFacilityId, req.session.user.id, patientId, reasonCode, urgency, operationId]
     );
     await client.query(
       `INSERT INTO referral_events (referral_id, event_type, actor_user_id, notes)
