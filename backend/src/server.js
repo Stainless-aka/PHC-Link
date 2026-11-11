@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth.routes');
 const facilityRoutes = require('./routes/facilities.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const referralRoutes = require('./routes/referrals.routes');
+const patientRoutes = require('./routes/patients.routes');
 const setupRoutes = require('./routes/setup.routes');
 const adminRoutes = require('./routes/admin.routes');
 const { notFound, errorHandler } = require('./middleware/error-handler');
@@ -59,6 +60,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/referrals', referralRoutes);
+app.use('/api/patients', patientRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
