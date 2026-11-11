@@ -8,15 +8,26 @@ router.use(requireAuth, requireRole('system_admin'));
 
 router.get('/overview', async (req, res, next) => {
   try {
-    const [states, lgas, facilities, users, items, referrals] = await Promise.all([
+    const [states, lgas, facilities, users, items, referrals, referralRecords] = await Promise.all([
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
       pool.query('SELECT f.id,f.name,f.code,f.lga_id,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
       pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.phone,u.is_active, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
       pool.query('SELECT id,name,category,unit,default_minimum_stock FROM inventory_items WHERE is_active=TRUE ORDER BY category,name'),
-      pool.query('SELECT count(*)::int AS count FROM referrals')
+      pool.query('SELECT count(*)::int AS count FROM referrals'),
+      pool.query(`SELECT r.id,r.referral_code,r.reason_code,r.urgency,r.status,r.created_at,r.updated_at,
+                         src.name AS origin_facility,dst.name AS destination_facility,
+                         src_lga.name AS origin_lga,dst_lga.name AS destination_lga,
+                         u.full_name AS created_by_name
+                  FROM referrals r
+                  JOIN facilities src ON src.id=r.origin_facility_id
+                  JOIN facilities dst ON dst.id=r.destination_facility_id
+                  JOIN lgas src_lga ON src_lga.id=src.lga_id
+                  JOIN lgas dst_lga ON dst_lga.id=dst.lga_id
+                  LEFT JOIN users u ON u.id=r.created_by
+                  ORDER BY r.created_at DESC LIMIT 250`)
     ]);
-    res.json({ states:states.rows, lgas:lgas.rows, facilities:facilities.rows, users:users.rows, items:items.rows, referralCount:referrals.rows[0].count });
+    res.json({ states:states.rows, lgas:lgas.rows, facilities:facilities.rows, users:users.rows, items:items.rows, referralCount:referrals.rows[0].count, referrals:referralRecords.rows });
   } catch (error) { next(error); }
 });
 
