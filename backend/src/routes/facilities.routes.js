@@ -19,7 +19,7 @@ router.get('/', async (req, res, next) => {
     }
     const result = await pool.query(
       `SELECT f.id, f.name, f.code, f.address, f.latitude, f.longitude,
-              l.name AS lga_name, s.name AS state_name
+              l.name AS lga_name, origin_state.name AS state_name
        FROM facilities f JOIN lgas l ON l.id = f.lga_id
        JOIN states s ON s.id = l.state_id ${where}
        ORDER BY s.name, l.name, f.name`, params
