@@ -40,14 +40,14 @@ router.post('/', async (req, res, next) => {
   const client = await pool.connect();
   try {
     const facilityId = String(req.body.facilityId || '');
-    const fullName = String(req.body.fullName || '').trim().replace(/\\s+/g, ' ');
+    const fullName = String(req.body.fullName || '').trim().replace(/\s+/g, ' ');
     const dateOfBirth = req.body.dateOfBirth ? String(req.body.dateOfBirth) : null;
     const sex = req.body.sex ? String(req.body.sex) : null;
     const phone = req.body.phone ? String(req.body.phone).trim() : null;
     if (!facilityId || fullName.length < 2 || fullName.length > 160) {
       return res.status(400).json({ error: 'Facility and a valid patient name are required.' });
     }
-    if (dateOfBirth && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth) || Number.isNaN(Date.parse(dateOfBirth)) || new Date(dateOfBirth) > new Date())) {
+    if (dateOfBirth && (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) || Number.isNaN(Date.parse(dateOfBirth)) || new Date(dateOfBirth) > new Date())) {
       return res.status(400).json({ error: 'Enter a valid date of birth that is not in the future.' });
     }
     if (sex && !['female', 'male', 'unknown'].includes(sex)) {
