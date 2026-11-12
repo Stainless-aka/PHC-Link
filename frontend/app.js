@@ -131,7 +131,8 @@ async function facilityWorkspace() {
     }
     content+='</section>';
     const nav=[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]];
-    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></header><div class="net"><span id="apiStatus">Authenticated session</span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
+    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><div class="facility-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
+    applyFacilityLanguage();updateSyncIndicator();
   } catch(error) {
     if(error.message==="Authentication required."){STATE.user=null;window.location.replace("index.html");}
     else root.innerHTML='<section class="panel"><h2>Facility workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="render()">Retry</button></section>';
@@ -147,7 +148,7 @@ async function clinicianWorkspace(){
     const data=await api("/api/referrals/clinician/inbox");
     const rows=data.referrals||[];
     const cards=rows.length?rows.map(r=>'<article class="clinician-referral"><div class="clinician-referral-top"><div><span class="clinician-emergency-label">EMERGENCY REFERRAL</span><h3>'+escapeHtml(r.referral_code)+'</h3><p>'+escapeHtml(r.origin_facility)+' · '+escapeHtml(r.origin_lga)+', '+escapeHtml(r.origin_state)+'</p></div><span class="clinician-status">'+escapeHtml(r.status)+'</span></div><div class="clinician-patient"><strong>'+escapeHtml(r.patient_name||"Patient details unavailable")+'</strong><span>'+escapeHtml(r.patient_code||"")+' · '+escapeHtml(r.sex||"Sex not recorded")+'</span><small>'+escapeHtml(r.reason_code||"Emergency")+' · '+escapeHtml(new Date(r.created_at).toLocaleString())+'</small></div><form class="clinician-response-form" data-referral-id="'+escapeHtml(r.id)+'"><label for="instruction-'+escapeHtml(r.id)+'">Instruction to PHC (optional)</label><textarea id="instruction-'+escapeHtml(r.id)+'" name="notes" rows="2" maxlength="500" placeholder="e.g. Give IV fluids, refer now"></textarea><div><button class="btn clinician-accept" type="button" data-clinician-action="acknowledged" data-referral-id="'+escapeHtml(r.id)+'">REF-OK · Accept</button><button class="btn sec clinician-reject" type="button" data-clinician-action="rejected" data-referral-id="'+escapeHtml(r.id)+'">REF-NO · Cannot accept</button></div></form></article>').join(""):'<section class="clinician-empty"><span>✓</span><h3>No active emergency referrals</h3><p>New emergency referrals from PHCs will appear here automatically.</p></section>';
-    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>PHC Link · Clinician</b><small>'+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.designation||"Clinician")+'</small></div><div class="clinician-header-actions"><span class="clinician-live"><i></i> Live emergency queue</span><button class="btn sec sm" id="clinicianLogout" type="button">Sign out</button></div></header><div class="net"><span>Emergency referrals across PHC Link</span><span>'+rows.length+' active</span></div><main class="body"><section class="clinician-heading"><div><span class="eyebrow">CLINICAL RESPONSE DESK</span><h2>Emergency referrals</h2><p>Review incoming emergencies and respond to the originating PHC.</p></div></section><div class="clinician-referral-list">'+cards+'</div></main></div></div>';
+    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>PHC Link · Clinician</b><small>'+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.designation||"Clinician")+'</small></div><div class="clinician-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><span class="clinician-live"><i></i> Live emergency queue</span><button class="btn sec sm" id="clinicianLogout" type="button">Sign out</button></div></header><div class="net"><span>Emergency referrals across PHC Link</span><span id="networkIndicator"></span><span>'+rows.length+' active</span></div><main class="body"><section class="clinician-heading"><div><span class="eyebrow">CLINICAL RESPONSE DESK</span><h2>Emergency referrals</h2><p>Review incoming emergencies and respond to the originating PHC.</p></div></section><div class="clinician-referral-list">'+cards+'</div></main></div></div>';
     applyFacilityLanguage();
     clearInterval(window.phcClinicianPoll);
     window.phcClinicianPoll=setInterval(async()=>{if(document.hidden)return;try{const latest=await api("/api/referrals/clinician/inbox");if((latest.referrals||[]).map(x=>x.id+":"+x.updated_at).join("|")!==rows.map(x=>x.id+":"+x.updated_at).join("|"))clinicianWorkspace();}catch(_){}},5000);
@@ -347,10 +348,10 @@ async function handleSubmit(event) {
     event.preventDefault();
     const d=formData(form);
     try{
-      const result=await api("/api/patients",{method:"POST",body:JSON.stringify({facilityId:STATE.facilityId,fullName:d.patientFullName,dateOfBirth:d.patientDateOfBirth||null,sex:d.patientSex||null,phone:d.patientPhone||null})});
-      notify("Patient registered: "+result.patient.patient_code);
-      await facilityWorkspace();
-    }catch(error){notify(error.message,true);}
+      const payload={operationId:crypto.randomUUID(),facilityId:STATE.facilityId,fullName:d.patientFullName,dateOfBirth:d.patientDateOfBirth||null,sex:d.patientSex||null,phone:d.patientPhone||null};
+      const result=await api("/api/patients",{method:"POST",body:JSON.stringify(payload)});
+      notify("Patient registered: "+result.patient.patient_code);await facilityWorkspace();
+    }catch(error){if(queueOfflineAction("/api/patients",payload))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}
     return;
   }
   if(form.id==="referralForm"){
@@ -405,6 +406,18 @@ document.addEventListener("input",event=>{
   }
 });
 document.addEventListener("click",async event=>{
+  const language=event.target.closest("[data-language-switch]");
+  if(language){localStorage.setItem("phclink-language",currentLanguage()==="ha"?"en":"ha");applyFacilityLanguage();return;}
+  const clinicianAction=event.target.closest("[data-clinician-action]");
+  if(clinicianAction){
+    const id=clinicianAction.dataset.referralId;
+    const form=document.querySelector('.clinician-response-form[data-referral-id="'+id+'"]');
+    const notes=form?.querySelector("textarea")?.value.trim()||null;
+    clinicianAction.disabled=true;
+    try{await api("/api/referrals/"+encodeURIComponent(id)+"/status",{method:"PATCH",body:JSON.stringify({status:clinicianAction.dataset.clinicianAction,notes})});notify(clinicianAction.dataset.clinicianAction==="acknowledged"?"Referral accepted. PHC has been notified.":"Referral declined. PHC has been notified.");clinicianWorkspace();}
+    catch(error){notify(error.message,true);clinicianAction.disabled=false;}
+    return;
+  }
   if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")||event.target.closest("#clinicianLogout")){
     try{await api("/api/auth/logout",{method:"POST"});STATE.user=null;STATE.facilityId=null;notify("Signed out.");window.location.assign("index.html");}
     catch(error){notify(error.message,true);}
