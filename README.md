@@ -34,6 +34,20 @@ The API runs separately from the current static prototype in `frontend/`. Fronte
 - `POST /api/referrals`
 - `PATCH /api/referrals/:id/status`
 
+## Account roles and professional designations
+
+PHC Link separates account permissions from a staff member's professional qualification.
+
+**Account roles** determine system access:
+- \`system_admin\`: manages the entire PHC Link network and user access.
+- \`state_admin\`: state-level administration.
+- \`lga_officer\`: LGA-level oversight.
+- \`health_worker\`: works within an assigned healthcare facility.
+
+**Professional designation** describes a health worker's qualification or position. Supported values include Doctor, Medical Officer, Nurse, Midwife, CHEW, CHO and Other. A designation does not grant permissions by itself.
+
+**Clinical response access** is a separate administrator-controlled capability for a designated health worker. It opens the emergency referral response desk while preserving access to the normal facility workspace. Only enabled staff can acknowledge or reject emergency referrals through that desk.
+
 ## Important
 
 This is an initial development foundation, not a production-ready clinical system. Do not enter real patient information. Before a live pilot, add automated tests, negative-stock safeguards, full audit logging, CSRF protection appropriate to the deployment, security review, backup/restore verification, data-protection controls and a validated clinical referral workflow.
