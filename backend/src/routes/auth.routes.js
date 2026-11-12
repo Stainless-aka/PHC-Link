@@ -26,7 +26,8 @@ router.post('/login', async (req, res, next) => {
       fullName: user.full_name,
       email: user.email,
       role: user.role,
-      designation: user.designation
+      designation: user.designation,
+      canRespondEmergency: user.can_respond_emergency
     };
     res.json({ user: req.session.user });
   } catch (error) { next(error); }
