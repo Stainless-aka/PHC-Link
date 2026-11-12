@@ -558,3 +558,17 @@ body[data-workspace="facility"] .body>.panel:first-child{padding:0;border:0;back
 .admin-table-panel td .role-edit select{max-width:180px}
 .admin-table-panel td .admin-clinical-access{white-space:nowrap}
 @media(max-width:760px){.admin-table-panel .table-wrap{overflow-x:auto}.admin-table-panel table{min-width:1080px}}
+
+/* Keep account actions in one aligned row in the facility top header */
+body[data-workspace="facility"] .hdr>.staff-identity{display:grid;gap:4px}
+body[data-workspace="facility"] .hdr>.facility-header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;white-space:nowrap}
+@media(max-width:680px){
+ body[data-workspace="facility"] .hdr{align-items:center;gap:10px;flex-wrap:wrap}
+ body[data-workspace="facility"] .hdr>.staff-identity{flex:1 1 auto}
+ body[data-workspace="facility"] .hdr>.facility-header-actions{flex:0 1 auto;justify-content:flex-end}
+}
+@media(max-width:440px){
+ body[data-workspace="facility"] .hdr>.facility-header-actions{width:100%;flex:1 1 100%;justify-content:flex-start}
+ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{flex:1 1 auto}
+}
