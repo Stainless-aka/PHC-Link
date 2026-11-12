@@ -8,7 +8,7 @@ router.use(requireAuth, requireRole('system_admin'));
 
 router.get('/overview', async (req, res, next) => {
   try {
-    const [states, lgas, facilities, users, items, referrals, referralRecords] = await Promise.all([
+    const [states, lgas, facilities, users, items, referrals, referralRecords, patientRecords] = await Promise.all([
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
       pool.query('SELECT f.id,f.name,f.code,f.lga_id,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
@@ -25,9 +25,17 @@ router.get('/overview', async (req, res, next) => {
                   JOIN lgas src_lga ON src_lga.id=src.lga_id
                   JOIN lgas dst_lga ON dst_lga.id=dst.lga_id
                   LEFT JOIN users u ON u.id=r.created_by
-                  ORDER BY r.created_at DESC LIMIT 250`)
+                  ORDER BY r.created_at DESC LIMIT 250`),
+      pool.query(`SELECT p.id,p.patient_code,p.full_name,p.sex,p.created_at,
+                         f.id AS facility_id,f.name AS facility_name,
+                         l.name AS lga_name,s.name AS state_name
+                  FROM patients p
+                  JOIN facilities f ON f.id=p.facility_id
+                  JOIN lgas l ON l.id=f.lga_id
+                  JOIN states s ON s.id=l.state_id
+                  ORDER BY s.name,l.name,f.name,p.created_at DESC`)
     ]);
-    res.json({ states:states.rows, lgas:lgas.rows, facilities:facilities.rows, users:users.rows, items:items.rows, referralCount:referrals.rows[0].count, referrals:referralRecords.rows });
+    res.json({ states:states.rows, lgas:lgas.rows, facilities:facilities.rows, users:users.rows, items:items.rows, referralCount:referrals.rows[0].count, referrals:referralRecords.rows, patients:patientRecords.rows });
   } catch (error) { next(error); }
 });
 
