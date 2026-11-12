@@ -100,6 +100,8 @@ router.post('/users/:userId/facilities', async (req,res,next)=>{
     if(!['health_worker','clinician'].includes(user.rows[0].role)){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers and clinicians.'});}
     const facility=await client.query('SELECT id FROM facilities WHERE id=$1 AND is_active=TRUE',[facilityId]);
     if(!facility.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Active facility not found.'});}
+    // A health worker or clinician may have only one active facility at a time.
+    await client.query('UPDATE facility_users SET is_active=FALSE WHERE user_id=$1 AND is_active=TRUE AND facility_id<>$2',[req.params.userId,facilityId]);
     await client.query('INSERT INTO facility_users(facility_id,user_id,is_active) VALUES($1,$2,TRUE) ON CONFLICT(facility_id,user_id) DO UPDATE SET is_active=TRUE,assigned_at=NOW()',[facilityId,req.params.userId]);
     await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_FACILITY_ASSIGNED','user',req.params.userId,JSON.stringify({facilityId})]);
     const assignments=await client.query('SELECT f.id,f.name FROM facility_users fu JOIN facilities f ON f.id=fu.facility_id WHERE fu.user_id=$1 AND fu.is_active=TRUE AND f.is_active=TRUE ORDER BY f.name',[req.params.userId]);
@@ -120,8 +122,11 @@ router.patch('/users/:userId/role', async (req,res,next)=>{
     await client.query('BEGIN');
     const updated=await client.query('UPDATE users SET role=$1,updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active',[role,req.params.userId]);
     if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
-    if(role==='lga_officer')await client.query('DELETE FROM facility_users WHERE user_id=$1',[req.params.userId]);
-    else await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
+    if(['health_worker','clinician'].includes(role)) await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
+    else {
+      await client.query('DELETE FROM facility_users WHERE user_id=$1',[req.params.userId]);
+      await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
+    }
     await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_ROLE_CHANGED','user',req.params.userId,JSON.stringify({role})]);
     await client.query('COMMIT');res.json({user:updated.rows[0]});
   }catch(error){await client.query('ROLLBACK').catch(()=>{});next(error);}
