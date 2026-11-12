@@ -8,7 +8,7 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
 }
 async function api(path, options={}) {
-  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&["/api/auth/me","/api/facilities","/api/inventory/items","/api/inventory/balances","/api/patients"].includes(route);
+  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&["/api/auth/me","/api/facilities","/api/facilities/referral-destinations","/api/inventory/items","/api/inventory/balances","/api/patients","/api/referrals"].includes(route);
   let response;
   try { response=await fetch(API_BASE_URL+path,{...options,credentials:"include",mode:"cors",headers:{"Content-Type":"application/json",...(options.headers||{})}}); }
   catch(error) {
