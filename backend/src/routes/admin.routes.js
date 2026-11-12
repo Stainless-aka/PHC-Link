@@ -108,7 +108,7 @@ router.post('/users/:userId/facilities', async (req,res,next)=>{
     await client.query('BEGIN');
     const user=await client.query('SELECT id,role FROM users WHERE id=$1 FOR UPDATE',[req.params.userId]);
     if(!user.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
-    if(user.rows[0].role!=='health_worker'){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers and clinicians.'});}
+    if(user.rows[0].role!=='health_worker'){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers.'});}
     const facility=await client.query('SELECT id FROM facilities WHERE id=$1 AND is_active=TRUE',[facilityId]);
     if(!facility.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Active facility not found.'});}
     // A health worker or clinician may have only one active facility at a time.
@@ -131,7 +131,7 @@ router.patch('/users/:userId/role', async (req,res,next)=>{
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
-    const updated=await client.query('UPDATE users SET role=$1,updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active',[role,req.params.userId]);
+    const updated=await client.query(`UPDATE users SET role=$1, designation=CASE WHEN $1='health_worker' THEN designation ELSE NULL END, can_respond_emergency=CASE WHEN $1='health_worker' THEN can_respond_emergency ELSE FALSE END, updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active,designation,can_respond_emergency`,[role,req.params.userId]);
     if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
     if(role==='health_worker') await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
     else {
