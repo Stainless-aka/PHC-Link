@@ -436,7 +436,6 @@ document.addEventListener("click",async event=>{
   }
   if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")||event.target.closest("#clinicianLogout")){
     try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:")).forEach(key=>localStorage.removeItem(key));STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
-    catch(error){notify(error.message,true);}
   }
 });
 render();
