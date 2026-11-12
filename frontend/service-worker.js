@@ -1,4 +1,4 @@
-const CACHE_NAME="phc-link-shell-v7";
+const CACHE_NAME="phc-link-shell-v8";
 const APP_SHELL=["./","index.html","admin.html","facility.html","clinician.html","stock.html","referrals.html","patients.html","ussd.html","styles.css","app.js"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
