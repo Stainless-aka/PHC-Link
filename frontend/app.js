@@ -132,7 +132,7 @@ async function facilityWorkspace() {
     content+='</section>';
     const nav=[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]];
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><div class="facility-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
-    applyFacilityLanguage();updateSyncIndicator();
+    applyFacilityLanguage();updateSyncIndicator();flushOfflineQueue();
   } catch(error) {
     if(error.message==="Authentication required."){STATE.user=null;window.location.replace("index.html");}
     else root.innerHTML='<section class="panel"><h2>Facility workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="render()">Retry</button></section>';
@@ -149,7 +149,7 @@ async function clinicianWorkspace(){
     const rows=data.referrals||[];
     const cards=rows.length?rows.map(r=>'<article class="clinician-referral"><div class="clinician-referral-top"><div><span class="clinician-emergency-label">EMERGENCY REFERRAL</span><h3>'+escapeHtml(r.referral_code)+'</h3><p>'+escapeHtml(r.origin_facility)+' · '+escapeHtml(r.origin_lga)+', '+escapeHtml(r.origin_state)+'</p></div><span class="clinician-status">'+escapeHtml(r.status)+'</span></div><div class="clinician-patient"><strong>'+escapeHtml(r.patient_name||"Patient details unavailable")+'</strong><span>'+escapeHtml(r.patient_code||"")+' · '+escapeHtml(r.sex||"Sex not recorded")+'</span><small>'+escapeHtml(r.reason_code||"Emergency")+' · '+escapeHtml(new Date(r.created_at).toLocaleString())+'</small></div><form class="clinician-response-form" data-referral-id="'+escapeHtml(r.id)+'"><label for="instruction-'+escapeHtml(r.id)+'">Instruction to PHC (optional)</label><textarea id="instruction-'+escapeHtml(r.id)+'" name="notes" rows="2" maxlength="500" placeholder="e.g. Give IV fluids, refer now"></textarea><div><button class="btn clinician-accept" type="button" data-clinician-action="acknowledged" data-referral-id="'+escapeHtml(r.id)+'">REF-OK · Accept</button><button class="btn sec clinician-reject" type="button" data-clinician-action="rejected" data-referral-id="'+escapeHtml(r.id)+'">REF-NO · Cannot accept</button></div></form></article>').join(""):'<section class="clinician-empty"><span>✓</span><h3>No active emergency referrals</h3><p>New emergency referrals from PHCs will appear here automatically.</p></section>';
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>PHC Link · Clinician</b><small>'+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.designation||"Clinician")+'</small></div><div class="clinician-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><span class="clinician-live"><i></i> Live emergency queue</span><button class="btn sec sm" id="clinicianLogout" type="button">Sign out</button></div></header><div class="net"><span>Emergency referrals across PHC Link</span><span id="networkIndicator"></span><span>'+rows.length+' active</span></div><main class="body"><section class="clinician-heading"><div><span class="eyebrow">CLINICAL RESPONSE DESK</span><h2>Emergency referrals</h2><p>Review incoming emergencies and respond to the originating PHC.</p></div></section><div class="clinician-referral-list">'+cards+'</div></main></div></div>';
-    applyFacilityLanguage();
+    applyFacilityLanguage();updateSyncIndicator();
     clearInterval(window.phcClinicianPoll);
     window.phcClinicianPoll=setInterval(async()=>{if(document.hidden)return;try{const latest=await api("/api/referrals/clinician/inbox");if((latest.referrals||[]).map(x=>x.id+":"+x.updated_at).join("|")!==rows.map(x=>x.id+":"+x.updated_at).join("|"))clinicianWorkspace();}catch(_){}},5000);
   }catch(error){root.innerHTML='<section class="panel"><h2>Clinician workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="clinicianWorkspace()">Retry</button></section>';}
@@ -288,6 +288,7 @@ async function loginPageView() {
 function render() {
   if(WORKSPACE==="admin") dashboardView();
   else if(WORKSPACE==="facility") facilityWorkspace();
+  else if(WORKSPACE==="clinician") clinicianWorkspace();
   else loginPageView();
 }
 async function checkApiConnection() {
@@ -359,7 +360,7 @@ async function handleSubmit(event) {
     const d=formData(form);
     const payload={operationId:crypto.randomUUID(),originFacilityId:STATE.facilityId,destinationFacilityId:d.destinationFacilityId,patientId:d.patientId,reasonCode:d.reasonCode.trim(),urgency:d.urgency};
     try{const result=await api("/api/referrals",{method:"POST",body:JSON.stringify(payload)});notify("Referral created: "+result.referral.referral_code);await facilityWorkspace();}
-    catch(error){notify(error.message,true);}
+    catch(error){if(queueOfflineAction("/api/referrals",payload))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}
     return;
   }
   const config=routes[form.id];if(!config)return;
@@ -424,6 +425,9 @@ document.addEventListener("click",async event=>{
   }
 });
 render();
+window.addEventListener("online",flushOfflineQueue);
+window.addEventListener("offline",updateSyncIndicator);
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
 
 function initTheme() {
   const stored = localStorage.getItem("phc-link-theme");
