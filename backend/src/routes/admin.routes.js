@@ -157,4 +157,23 @@ router.post('/inventory-items', async(req,res,next)=>{
   }catch(error){if(error.code==='23505')return res.status(409).json({error:'That inventory item and unit already exist.'});next(error);}
 });
 
+router.patch('/users/:userId/designation', async (req,res,next)=>{
+  const allowed=['doctor','medical_officer','nurse','midwife','chew','cho','other',null,''];
+  const designation=req.body.designation||null;
+  if(!allowed.includes(designation))return res.status(400).json({error:'Select a valid professional designation.'});
+  try{
+    const result=await pool.query(
+      `UPDATE users SET designation=$1,
+         can_respond_emergency=CASE WHEN $1 IS NULL THEN FALSE ELSE can_respond_emergency END,
+         updated_at=NOW()
+       WHERE id=$2 AND role='health_worker'
+       RETURNING id,designation,can_respond_emergency`,
+      [designation,req.params.userId]
+    );
+    if(!result.rowCount)return res.status(404).json({error:'Health worker account not found.'});
+    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_DESIGNATION_CHANGED','user',req.params.userId,JSON.stringify({designation})]);
+    res.json({user:result.rows[0]});
+  }catch(error){next(error);}
+});
+
 router.patch('/users/:userId/clinical-access', async (req,res,next)=>{\n  const enabled=Boolean(req.body.canRespondEmergency);\n  try{\n    const result=await pool.query(\n      `UPDATE users SET can_respond_emergency=$1,updated_at=NOW()\n       WHERE id=$2 AND role='health_worker'\n         AND ($1=FALSE OR designation IS NOT NULL)\n       RETURNING id,can_respond_emergency`,\n      [enabled,req.params.userId]\n    );\n    if(!result.rowCount)return res.status(400).json({error:'Clinical referral access requires a health worker with a professional designation.'});\n    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_CLINICAL_ACCESS_CHANGED','user',req.params.userId,JSON.stringify({canRespondEmergency:enabled})]);\n    res.json({user:result.rows[0]});\n  }catch(error){next(error);}\n});\n\nmodule.exports=router;
