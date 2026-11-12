@@ -78,14 +78,14 @@ router.post('/users', async (req,res,next) => {
     if(role==='lga_officer'&&!lgaId) return res.status(400).json({error:'Select an LGA for this officer.'});
     const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho','other'];
     if(designation&&!allowedDesignations.includes(designation)) return res.status(400).json({error:'Select a valid professional designation.'});
-    if(canRespondEmergency&&(!designation||role!=='health_worker')) return res.status(400).json({error:'Clinical referral access requires a health worker account and a professional designation.'});
+    if((canRespondEmergency===true||canRespondEmergency==='true')&&(!designation||role!=='health_worker')) return res.status(400).json({error:'Clinical referral access requires a health worker account and a professional designation.'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
       const hash=await bcrypt.hash(password,12);
       const created=await client.query(
         'INSERT INTO users(full_name,email,password_hash,role,phone,designation,can_respond_emergency) VALUES($1,lower($2),$3,$4,$5,$6,$7) RETURNING id,full_name,email,role,phone,designation,can_respond_emergency,is_active',
-        [String(fullName).trim(),String(email).trim(),hash,role,phone,designation||null,Boolean(canRespondEmergency)]
+        [String(fullName).trim(),String(email).trim(),hash,role,phone,designation||null,(canRespondEmergency===true||canRespondEmergency==='true')]
       );
       if(facilityId&&role==='health_worker')
         await client.query('INSERT INTO facility_users(facility_id,user_id) VALUES($1,$2)',[facilityId,created.rows[0].id]);
@@ -176,4 +176,20 @@ router.patch('/users/:userId/designation', async (req,res,next)=>{
   }catch(error){next(error);}
 });
 
-router.patch('/users/:userId/clinical-access', async (req,res,next)=>{\n  const enabled=Boolean(req.body.canRespondEmergency);\n  try{\n    const result=await pool.query(\n      `UPDATE users SET can_respond_emergency=$1,updated_at=NOW()\n       WHERE id=$2 AND role='health_worker'\n         AND ($1=FALSE OR designation IS NOT NULL)\n       RETURNING id,can_respond_emergency`,\n      [enabled,req.params.userId]\n    );\n    if(!result.rowCount)return res.status(400).json({error:'Clinical referral access requires a health worker with a professional designation.'});\n    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_CLINICAL_ACCESS_CHANGED','user',req.params.userId,JSON.stringify({canRespondEmergency:enabled})]);\n    res.json({user:result.rows[0]});\n  }catch(error){next(error);}\n});\n\nmodule.exports=router;
+router.patch('/users/:userId/clinical-access', async (req,res,next)=>{
+  const enabled=req.body.canRespondEmergency===true||req.body.canRespondEmergency==='true';
+  try{
+    const result=await pool.query(
+      `UPDATE users SET can_respond_emergency=$1,updated_at=NOW()
+       WHERE id=$2 AND role='health_worker'
+         AND ($1=FALSE OR designation IS NOT NULL)
+       RETURNING id,can_respond_emergency`,
+      [enabled,req.params.userId]
+    );
+    if(!result.rowCount)return res.status(400).json({error:'Clinical referral access requires a health worker with a professional designation.'});
+    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_CLINICAL_ACCESS_CHANGED','user',req.params.userId,JSON.stringify({canRespondEmergency:enabled})]);
+    res.json({user:result.rows[0]});
+  }catch(error){next(error);}
+});
+
+module.exports=router;
