@@ -44,6 +44,8 @@ router.post('/', async (req, res, next) => {
     const dateOfBirth = req.body.dateOfBirth ? String(req.body.dateOfBirth) : null;
     const sex = req.body.sex ? String(req.body.sex) : null;
     const phone = req.body.phone ? String(req.body.phone).trim() : null;
+    const operationId = req.body.operationId ? String(req.body.operationId) : null;
+    if (operationId && !/^[0-9a-f-]{36}$/i.test(operationId)) return res.status(400).json({ error: 'Invalid operation ID.' });
     if (!facilityId || fullName.length < 2 || fullName.length > 160) {
       return res.status(400).json({ error: 'Facility and a valid patient name are required.' });
     }
@@ -60,12 +62,16 @@ router.post('/', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'You cannot register patients at this facility.' });
     }
+    if (operationId) {
+      const duplicate = await client.query('SELECT id,patient_code,full_name,date_of_birth,sex,phone,created_at FROM patients WHERE operation_id=$1', [operationId]);
+      if (duplicate.rowCount) { await client.query('COMMIT'); return res.json({ duplicate:true, patient:duplicate.rows[0] }); }
+    }
     const code = 'PT-' + randomUUID().slice(0, 8).toUpperCase();
     const created = await client.query(
-      `INSERT INTO patients (facility_id, patient_code, full_name, date_of_birth, sex, phone, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO patients (facility_id, patient_code, full_name, date_of_birth, sex, phone, created_by, operation_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        RETURNING id, patient_code, full_name, date_of_birth, sex, phone, created_at`,
-      [facilityId, code, fullName, dateOfBirth, sex, phone, req.session.user.id]
+      [facilityId, code, fullName, dateOfBirth, sex, phone, req.session.user.id, operationId]
     );
     await client.query(
       `INSERT INTO audit_logs (actor_user_id, action, resource_type, resource_id, metadata)
