@@ -8,16 +8,16 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
 }
 async function api(path, options={}) {
-  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path;
+  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, cacheable=method==="GET"&&!path.startsWith("/api/admin")&&!path.startsWith("/api/referrals/clinician");
   let response;
   try { response=await fetch(API_BASE_URL+path,{...options,credentials:"include",mode:"cors",headers:{"Content-Type":"application/json",...(options.headers||{})}}); }
   catch(error) {
-    if(method==="GET"){try{const cached=localStorage.getItem(cacheKey);if(cached)return JSON.parse(cached);}catch(_){}}
+    if(cacheable){try{const cached=localStorage.getItem(cacheKey);if(cached)return JSON.parse(cached);}catch(_){}}
     throw new Error("Network unavailable. Your action can be saved offline.");
   }
   const payload=response.status===204?{}:await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(payload.error||"Request failed. Please try again.");
-  if(method==="GET"){try{localStorage.setItem(cacheKey,JSON.stringify(payload));}catch(_){}}
+  if(cacheable){try{localStorage.setItem(cacheKey,JSON.stringify(payload));}catch(_){}}
   return payload;
 }
 function outboxKey(){return "phclink-outbox-v1:"+(STATE.user?.id||"unknown");}
