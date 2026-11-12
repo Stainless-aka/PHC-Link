@@ -86,4 +86,64 @@ router.post('/', async (req, res, next) => {
   } finally { client.release(); }
 });
 
+
+router.patch('/:patientId', async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    const patientId = String(req.params.patientId || '');
+    const fullName = String(req.body.fullName || '').trim().replace(/\\s+/g, ' ');
+    const dateOfBirth = req.body.dateOfBirth ? String(req.body.dateOfBirth) : null;
+    const sex = req.body.sex ? String(req.body.sex) : null;
+    const phone = req.body.phone ? String(req.body.phone).trim() : null;
+
+    if (req.session.user.role !== 'health_worker') {
+      return res.status(403).json({ error: 'Only health workers can edit patient details.' });
+    }
+    if (!patientId || fullName.length < 2 || fullName.length > 160) {
+      return res.status(400).json({ error: 'Enter a valid patient name.' });
+    }
+    if (dateOfBirth && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth) || Number.isNaN(Date.parse(dateOfBirth)) || new Date(dateOfBirth) > new Date())) {
+      return res.status(400).json({ error: 'Enter a valid date of birth that is not in the future.' });
+    }
+    if (sex && !['female', 'male', 'unknown'].includes(sex)) {
+      return res.status(400).json({ error: 'Select a valid sex value.' });
+    }
+    if (phone && phone.length > 30) {
+      return res.status(400).json({ error: 'Phone number is too long.' });
+    }
+
+    await client.query('BEGIN');
+    const existing = await client.query(
+      'SELECT id, facility_id FROM patients WHERE id = $1 FOR UPDATE',
+      [patientId]
+    );
+    if (!existing.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Patient record not found.' });
+    }
+    if (!(await canAccessFacility(client, req.session.user.id, existing.rows[0].facility_id))) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'You cannot edit patients at this facility.' });
+    }
+
+    const updated = await client.query(
+      `UPDATE patients
+       SET full_name = $1, date_of_birth = $2, sex = $3, phone = $4
+       WHERE id = $5
+       RETURNING id, patient_code, full_name, date_of_birth, sex, phone, created_at`,
+      [fullName, dateOfBirth, sex, phone, patientId]
+    );
+    await client.query(
+      `INSERT INTO audit_logs (actor_user_id, action, resource_type, resource_id, metadata)
+       VALUES ($1, 'PATIENT_UPDATED', 'patient', $2, $3)`,
+      [req.session.user.id, patientId, JSON.stringify({ facilityId: existing.rows[0].facility_id, fields: ['full_name', 'date_of_birth', 'sex', 'phone'] })]
+    );
+    await client.query('COMMIT');
+    res.json({ patient: updated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(error);
+  } finally { client.release(); }
+});
+
 module.exports = router;
