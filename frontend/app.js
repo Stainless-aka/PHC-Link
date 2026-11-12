@@ -72,7 +72,7 @@ function applyFacilityLanguage(){
  const toggle=root.querySelector("[data-language-switch]");if(toggle)toggle.textContent=lang==="ha"?"Hausa | English":"English | Hausa";
 }
 function facilityLoginView() {
-  return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FACILITY WORKSPACE</div><h2>Staff sign in</h2><p class="sub">Registered health workers and clinicians can access their assigned facility after signing in.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in to facility</button></form></div></section>';
+  return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FACILITY WORKSPACE</div><h2>Staff sign in</h2><p class="sub">Registered health workers can access their assigned facility after signing in.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in to facility</button></form></div></section>';
 }
 async function facilityWorkspace() {
   const root=document.getElementById("root");
@@ -292,7 +292,6 @@ async function loginPageView() {
       const me=await api("/api/auth/me"), role=me.user.role;
       if(role==="system_admin") window.location.replace("admin.html");
       else if(role==="health_worker") window.location.replace("facility.html");
-      else if(role==="clinician") window.location.replace("clinician.html");
       else root.innerHTML='<section class="panel setup-panel"><h2>Workspace unavailable</h2><p class="sub">Your account role does not have a workspace yet. Contact the system administrator.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
     } catch(error) {
       if(error.message==="Authentication required.") root.innerHTML=loginView();
