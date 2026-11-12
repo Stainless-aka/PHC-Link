@@ -22,7 +22,7 @@ async function api(path, options={}) {
 }
 function outboxKey(){return "phclink-outbox-v1:"+(STATE.user?.id||"unknown");}
 function readOutbox(){try{return JSON.parse(localStorage.getItem(outboxKey())||"[]");}catch(_){return [];}}
-function writeOutbox(items){try{localStorage.setItem(outboxKey(),JSON.stringify(items));}catch(_){notify("Device storage is full. Connect and retry to avoid losing this action.",true);}}
+function writeOutbox(items){try{localStorage.setItem(outboxKey(),JSON.stringify(items));return true;}catch(_){notify("Device storage is full. Connect and retry to avoid losing this action.",true);return false;}}
 function updateSyncIndicator(){
   const node=document.getElementById("networkIndicator");if(!node)return;
   const count=readOutbox().length;
@@ -33,7 +33,7 @@ function queueOfflineAction(path,payload,error){
   if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path))return false;
   const operationId=payload.operationId||crypto.randomUUID();
   const item={id:operationId,path,method:"POST",payload:{...payload,operationId},createdAt:new Date().toISOString()};
-  const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);writeOutbox(queue);updateSyncIndicator();return true;
+  const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);if(!writeOutbox(queue))return false;updateSyncIndicator();return true;
 }
 async function flushOfflineQueue(){
   if(!navigator.onLine||!STATE.user)return;
