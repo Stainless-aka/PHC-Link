@@ -572,3 +572,15 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
  body[data-workspace="facility"] .hdr>.facility-header-actions{width:100%;flex:1 1 100%;justify-content:flex-start}
  body[data-workspace="facility"] .hdr>.facility-header-actions .btn{flex:1 1 auto}
 }
+
+
+/* Patient record editor */
+.patient-editor[hidden]{display:none}
+.patient-editor{position:fixed;z-index:100;inset:0;display:grid;place-items:center;padding:18px;background:#102b3fb8;backdrop-filter:blur(3px)}
+.patient-editor-card{width:min(100%,520px);max-height:min(90vh,760px);overflow:auto;padding:22px;border:1px solid var(--line);border-radius:13px;background:var(--white);box-shadow:0 20px 70px #071d2a45}
+.patient-editor-card .panel-head{align-items:center}
+.patient-editor-card .panel-head h3{margin:0;font-size:17px}
+.patient-editor-card .panel-head p{margin:5px 0 0;color:var(--muted);font-size:11px}
+.patient-editor-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+.patient-editor-actions .btn{width:auto;min-width:120px}
+@media(max-width:520px){.patient-editor{align-items:end;padding:8px}.patient-editor-card{max-height:88vh;padding:17px;border-radius:14px 14px 8px 8px}.patient-editor-actions{display:grid;grid-template-columns:1fr 1fr}.patient-editor-actions .btn{width:100%;min-width:0}}
