@@ -281,3 +281,19 @@ body[data-workspace="admin"]>.top{display:none}
 .network-setup-form button:disabled{opacity:.65;cursor:wait}
 @media(max-width:900px){.network-setup-form{grid-template-columns:1fr}.network-form-section+.network-form-section{border-left:0;border-top:1px solid var(--line)}}
 @media(max-width:520px){.network-form-actions{align-items:stretch;flex-direction:column}.network-form-actions .btn{width:100%}}
+
+
+/* Admin patient directory */
+.admin-patient-filters{padding:16px 18px;margin-bottom:14px}
+.admin-patient-filter-grid{display:grid;grid-template-columns:minmax(220px,1.7fr) repeat(3,minmax(145px,1fr));gap:10px}
+.admin-patient-filter-grid input,.admin-patient-filter-grid select{width:100%;min-width:0;min-height:40px;padding:0 11px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);font:inherit;font-size:11px}
+.admin-patient-filters>.admin-muted{display:block;margin:10px 0 0;font-size:10px}
+.admin-patient-facility{margin-bottom:14px;overflow:hidden}
+.admin-patient-facility .panel-head{padding:16px 18px;border-bottom:1px solid var(--line)}
+.admin-patient-facility .panel-head h3{margin:0;font-size:13px}
+.admin-patient-facility .panel-head p{margin:4px 0 0;font-size:10px;color:var(--muted)}
+.admin-patient-facility .table-wrap{border:0;border-radius:0}
+.admin-patient-facility table{margin:0}
+@media(max-width:900px){.admin-patient-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.admin-patient-filter-grid{grid-template-columns:1fr}.admin-patient-filters{padding:13px}}
+:root[data-theme="dark"] .admin-patient-filter-grid input,:root[data-theme="dark"] .admin-patient-filter-grid select{background:#10202b;color:var(--ink);border-color:#354a58}
