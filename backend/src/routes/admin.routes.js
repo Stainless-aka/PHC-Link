@@ -12,7 +12,7 @@ router.get('/overview', async (req, res, next) => {
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
       pool.query('SELECT f.id,f.name,f.code,f.lga_id,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
-      pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.phone,u.is_active, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
+      pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.designation,u.phone,u.is_active, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
       pool.query('SELECT id,name,category,unit,default_minimum_stock FROM inventory_items WHERE is_active=TRUE ORDER BY category,name'),
       pool.query('SELECT count(*)::int AS count FROM referrals'),
       pool.query(`SELECT r.id,r.referral_code,r.reason_code,r.urgency,r.status,r.created_at,r.updated_at,
@@ -70,19 +70,22 @@ router.post('/facilities', async (req,res,next) => {
 
 router.post('/users', async (req,res,next) => {
   try {
-    const {fullName,email,password,role,facilityId,lgaId,phone=null}=req.body;
+    const {fullName,email,password,role,facilityId,lgaId,phone=null,designation=null}=req.body;
     const allowed=['health_worker','clinician','lga_officer'];
     if(!String(fullName||'').trim()||!String(email||'').trim()||!password||password.length<12||!allowed.includes(role))
       return res.status(400).json({error:'Name, email, role and a password of at least 12 characters are required.'});
     if(role==='health_worker'||role==='clinician'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
     if(role==='lga_officer'&&!lgaId) return res.status(400).json({error:'Select an LGA for this officer.'});
+    const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho'];
+    if(role==='clinician'&&!allowedDesignations.includes(designation)) return res.status(400).json({error:'Select the clinician professional designation.'});
+    if(role!=='clinician'&&designation) return res.status(400).json({error:'Designation is only available for clinicians.'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
       const hash=await bcrypt.hash(password,12);
       const created=await client.query(
-        'INSERT INTO users(full_name,email,password_hash,role,phone) VALUES($1,lower($2),$3,$4,$5) RETURNING id,full_name,email,role,phone,is_active',
-        [String(fullName).trim(),String(email).trim(),hash,role,phone]
+        'INSERT INTO users(full_name,email,password_hash,role,phone,designation) VALUES($1,lower($2),$3,$4,$5,$6) RETURNING id,full_name,email,role,phone,designation,is_active',
+        [String(fullName).trim(),String(email).trim(),hash,role,phone,designation||null]
       );
       if(facilityId&&(role==='health_worker'||role==='clinician'))
         await client.query('INSERT INTO facility_users(facility_id,user_id) VALUES($1,$2)',[facilityId,created.rows[0].id]);
