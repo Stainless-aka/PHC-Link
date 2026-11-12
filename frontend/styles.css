@@ -297,3 +297,27 @@ body[data-workspace="admin"]>.top{display:none}
 @media(max-width:900px){.admin-patient-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.admin-patient-filter-grid{grid-template-columns:1fr}.admin-patient-filters{padding:13px}}
 :root[data-theme="dark"] .admin-patient-filter-grid input,:root[data-theme="dark"] .admin-patient-filter-grid select{background:#10202b;color:var(--ink);border-color:#354a58}
+
+
+/* Admin overview metric hierarchy */
+.admin-overview-metrics{display:grid;gap:22px;margin:0 0 38px}
+.admin-metric-group{min-width:0}
+.admin-metric-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:11px}
+.admin-metric-heading .eyebrow{display:block;margin-bottom:3px;color:#087f83;font-size:9px;font-weight:800;letter-spacing:.12em}
+.admin-metric-heading h3{margin:0;color:#203b4b;font:700 14px Manrope,sans-serif;letter-spacing:-.02em}
+.admin-metric-heading>span{color:#87959e;font-size:10px}
+.admin-kpis{display:grid;gap:12px;margin:0}
+.admin-kpis-network{grid-template-columns:repeat(3,minmax(0,1fr))}
+.admin-kpis-operations{grid-template-columns:repeat(4,minmax(0,1fr))}
+.admin-kpi{padding:17px 18px;border-radius:11px;transition:transform .18s ease,box-shadow .18s ease}
+.admin-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 22px #1b394710}
+.admin-kpi-top{font-size:11px}
+.admin-kpi-mark{width:30px;height:30px;font-size:16px}
+.admin-kpi>strong{margin:12px 0 5px;font-size:29px}
+.admin-kpi>small{font-size:10px}
+@media(max-width:1100px){.admin-kpis-operations{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.admin-kpis-network{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-metric-heading{align-items:center}}
+@media(max-width:460px){.admin-kpis-network,.admin-kpis-operations{grid-template-columns:1fr}.admin-kpi{padding:15px 16px}.admin-overview-metrics{gap:18px}}
+:root[data-theme="dark"] .admin-metric-heading h3{color:var(--ink)}
+:root[data-theme="dark"] .admin-metric-heading>span{color:var(--muted)}
+:root[data-theme="dark"] .admin-kpi-mark{background:#203b43;color:#8bd6ce}
