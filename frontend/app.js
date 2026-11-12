@@ -112,7 +112,7 @@ async function facilityWorkspace() {
     } else if(STATE.page==="patients"){
       const data=await api("/api/patients?facilityId="+encodeURIComponent(selected.id));
       const rows=data.patients||[];
-      content+='<section class="panel admin-panel"><div class="panel-head"><div><h3>Register a patient</h3><p>Create a patient record for this facility. Only necessary details are requested.</p></div></div><form id="patientForm" class="admin-form">'+field("Patient full name","patientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","patientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","patientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","patientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<button class="btn" type="submit">Register patient</button></form></section><section class="panel admin-panel"><div class="panel-head"><div><h3>Patient register</h3><p>Records registered at this facility</p></div><span class="count-label">'+rows.length+' patients</span></div><div class="table-wrap"><table><thead><tr><th>Patient ID</th><th>Full name</th><th>Date of birth</th><th>Sex</th><th>Phone</th><th>Date registered</th></tr></thead><tbody>'+(rows.length?rows.map(p=>'<tr><td>'+escapeHtml(p.patient_code)+'</td><td>'+escapeHtml(p.full_name)+'</td><td>'+escapeHtml(p.date_of_birth||"—")+'</td><td>'+escapeHtml(p.sex||"—")+'</td><td>'+escapeHtml(p.phone||"—")+'</td><td>'+escapeHtml(new Date(p.created_at).toLocaleDateString())+'</td></tr>').join(""):'<tr><td colspan="6">No patients registered at this facility yet.</td></tr>')+'</tbody></table></div></section>';
+      content+='<section class="panel admin-panel"><div class="panel-head"><div><h3>Register a patient</h3><p>Create a patient record for this facility. Only necessary details are requested.</p></div></div><form id="patientForm" class="admin-form">'+field("Patient full name","patientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","patientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","patientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","patientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<button class="btn" type="submit">Register patient</button></form></section><section class="panel admin-panel"><div class="panel-head"><div><h3>Patient register</h3><p>Records registered at this facility</p></div><span class="count-label">'+rows.length+' patients</span></div><div class="table-wrap"><table><thead><tr><th>Patient ID</th><th>Full name</th><th>Date of birth</th><th>Sex</th><th>Phone</th><th>Date registered</th><th>Actions</th></tr></thead><tbody>'+(rows.length?rows.map(p=>'<tr><td>'+escapeHtml(p.patient_code)+'</td><td>'+escapeHtml(p.full_name)+'</td><td>'+escapeHtml(p.date_of_birth||"—")+'</td><td>'+escapeHtml(p.sex||"—")+'</td><td>'+escapeHtml(p.phone||"—")+'</td><td>'+escapeHtml(new Date(p.created_at).toLocaleDateString())+'</td><td><button class="btn sec sm" type="button" data-edit-patient="'+escapeHtml(p.id)+'" data-name="'+escapeHtml(p.full_name)+'" data-dob="'+escapeHtml(p.date_of_birth||"")+'" data-sex="'+escapeHtml(p.sex||"")+'" data-phone="'+escapeHtml(p.phone||"")+'">Edit details</button></td></tr>').join(""):'<tr><td colspan="6">No patients registered at this facility yet.</td></tr>')+'</tbody></table></div></section>';
     } else if(STATE.page==="ussd") content+='<p class="sub">USSD and SMS integrations have not yet been configured.</p>';
     else {
       const [stockData,referralData,patientData]=await Promise.all([api("/api/inventory/balances?facilityId="+encodeURIComponent(selected.id)),api("/api/referrals?facilityId="+encodeURIComponent(selected.id)),api("/api/patients?facilityId="+encodeURIComponent(selected.id))]);
@@ -133,7 +133,7 @@ async function facilityWorkspace() {
     }
     content+='</section>';
     const nav=[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]];
-    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+(STATE.user.canRespondEmergency?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
+    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+(STATE.user.canRespondEmergency?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div><div id="patientEditor" class="patient-editor" hidden><section class="patient-editor-card" role="dialog" aria-modal="true" aria-labelledby="patientEditorTitle"><div class="panel-head"><div><h3 id="patientEditorTitle">Edit patient details</h3><p>Update the selected patient record.</p></div><button class="btn sec sm" type="button" data-close-patient-editor>Close</button></div><form id="patientEditForm" class="admin-form"><input type="hidden" name="patientId" id="editPatientId">'+field("Patient full name","editPatientFullName","text",true,\'maxlength="160" autocomplete="name"\')+field("Date of birth (optional)","editPatientDateOfBirth","date",false,\'max="\'+new Date().toISOString().slice(0,10)+\'"\')+selectField("Sex (optional)","editPatientSex",\'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>\',"Not recorded",false)+field("Phone number (optional)","editPatientPhone","tel",false,\'maxlength="30" autocomplete="tel"\')+'<div class="patient-editor-actions"><button class="btn sec" type="button" data-close-patient-editor>Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>';
     applyFacilityLanguage();updateSyncIndicator();flushOfflineQueue();
     clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),5000);
   } catch(error) {
@@ -371,6 +371,18 @@ async function handleSubmit(event) {
     }catch(error){if(queueOfflineAction("/api/patients",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}
     return;
   }
+  if(form.id==="patientEditForm"){
+    event.preventDefault();
+    const d=formData(form), patientId=d.patientId;
+    const button=form.querySelector('button[type="submit"]');button.disabled=true;
+    try{
+      const result=await api("/api/patients/"+encodeURIComponent(patientId),{method:"PATCH",body:JSON.stringify({fullName:d.editPatientFullName,dateOfBirth:d.editPatientDateOfBirth||null,sex:d.editPatientSex||null,phone:d.editPatientPhone||null})});
+      Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:/api/patients")).forEach(key=>localStorage.removeItem(key));
+      notify("Patient details updated: "+result.patient.patient_code);
+      await facilityWorkspace();
+    }catch(error){notify(error.message,true);button.disabled=false;}
+    return;
+  }
   if(form.id==="referralForm"){
     event.preventDefault();
     const d=formData(form);
@@ -443,6 +455,21 @@ document.addEventListener("input",event=>{
   }
 });
 document.addEventListener("click",async event=>{
+  const editPatient=event.target.closest("[data-edit-patient]");
+  if(editPatient){
+    const modal=document.getElementById("patientEditor");
+    if(modal){
+      document.getElementById("editPatientId").value=editPatient.dataset.editPatient;
+      document.getElementById("editPatientFullName").value=editPatient.dataset.name||"";
+      document.getElementById("editPatientDateOfBirth").value=editPatient.dataset.dob||"";
+      document.getElementById("editPatientSex").value=editPatient.dataset.sex||"";
+      document.getElementById("editPatientPhone").value=editPatient.dataset.phone||"";
+      modal.hidden=false;document.getElementById("editPatientFullName").focus();
+    }
+    return;
+  }
+  if(event.target.closest("[data-close-patient-editor]")){const modal=document.getElementById("patientEditor");if(modal)modal.hidden=true;return;}
+  if(event.target.id==="patientEditor"){event.target.hidden=true;return;}
   const language=event.target.closest("[data-language-switch]");
   if(language){localStorage.setItem("phclink-language",currentLanguage()==="ha"?"en":"ha");applyFacilityLanguage();return;}
   const clinicianAction=event.target.closest("[data-clinician-action]");
