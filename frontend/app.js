@@ -80,7 +80,7 @@ async function facilityWorkspace() {
   try {
     const me=await api("/api/auth/me"); STATE.user=me.user;
     if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
-    if(STATE.user.role==="clinician"){window.location.replace("clinician.html");return;}
+    
     if(STATE.user.role!=="health_worker"){
       root.innerHTML='<section class="panel setup-panel"><h2>Workspace not available</h2><p class="sub">Your account role does not have access to the facility workspace. Contact the system administrator.</p><button class="btn sec" id="staffLogout" type="button">Sign out</button></section>'; return;
     }
@@ -133,7 +133,7 @@ async function facilityWorkspace() {
     }
     content+='</section>';
     const nav=[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]];
-    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><div class="facility-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
+    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><div class="facility-header-actions">'+(STATE.user.canRespondEmergency?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
     applyFacilityLanguage();updateSyncIndicator();flushOfflineQueue();
     clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),5000);
   } catch(error) {
@@ -158,11 +158,11 @@ async function clinicianWorkspace(){
   root.innerHTML='<div class="dashboard"><p class="sub">Loading emergency referrals…</p></div>';
   try{
     const me=await api("/api/auth/me");STATE.user=me.user;
-    if(STATE.user.role!=="clinician"){window.location.replace(STATE.user.role==="system_admin"?"admin.html":"facility.html");return;}
+    if(STATE.user.role!=="health_worker"||!STATE.user.canRespondEmergency){window.location.replace(STATE.user.role==="system_admin"?"admin.html":"facility.html");return;}
     const data=await api("/api/referrals/clinician/inbox");
     const rows=data.referrals||[];
     const cards=rows.length?rows.map(r=>'<article class="clinician-referral"><div class="clinician-referral-top"><div><span class="clinician-emergency-label">EMERGENCY REFERRAL</span><h3>'+escapeHtml(r.referral_code)+'</h3><p>'+escapeHtml(r.origin_facility)+' · '+escapeHtml(r.origin_lga)+', '+escapeHtml(r.origin_state)+'</p></div><span class="clinician-status">'+escapeHtml(r.status)+'</span></div><div class="clinician-patient"><strong>'+escapeHtml(r.patient_name||"Patient details unavailable")+'</strong><span>'+escapeHtml(r.patient_code||"")+' · '+escapeHtml(r.sex||"Sex not recorded")+'</span><small>'+escapeHtml(r.reason_code||"Emergency")+' · '+escapeHtml(new Date(r.created_at).toLocaleString())+'</small></div><form class="clinician-response-form" data-referral-id="'+escapeHtml(r.id)+'"><label for="instruction-'+escapeHtml(r.id)+'">Instruction to PHC (optional)</label><textarea id="instruction-'+escapeHtml(r.id)+'" name="notes" rows="2" maxlength="500" placeholder="e.g. Give IV fluids, refer now"></textarea><div><button class="btn clinician-accept" type="button" data-clinician-action="acknowledged" data-referral-id="'+escapeHtml(r.id)+'">REF-OK · Accept</button><button class="btn sec clinician-reject" type="button" data-clinician-action="rejected" data-referral-id="'+escapeHtml(r.id)+'">REF-NO · Cannot accept</button></div></form></article>').join(""):'<section class="clinician-empty"><span>✓</span><h3>No active emergency referrals</h3><p>New emergency referrals from PHCs will appear here automatically.</p></section>';
-    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>PHC Link · Clinician</b><small>'+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.designation||"Clinician")+'</small></div><div class="clinician-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><span class="clinician-live"><i></i> Live emergency queue</span><button class="btn sec sm" id="clinicianLogout" type="button">Sign out</button></div></header><div class="net"><span>Emergency referrals across PHC Link</span><span id="networkIndicator"></span><span>'+rows.length+' active</span></div><main class="body"><section class="clinician-heading"><div><span class="eyebrow">CLINICAL RESPONSE DESK</span><h2>Emergency referrals</h2><p>Review incoming emergencies and respond to the originating PHC.</p></div></section><div class="clinician-referral-list">'+cards+'</div></main></div></div>';
+    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>PHC Link · Clinical response desk</b><small>'+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.designation||"Clinician")+'</small></div><div class="clinician-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><span class="clinician-live"><i></i> Live emergency queue</span><a class="btn sec sm" href="facility.html">Back to facility</a><button class="btn sec sm" id="clinicianLogout" type="button">Sign out</button></div></header><div class="net"><span>Emergency referrals across PHC Link</span><span id="networkIndicator"></span><span>'+rows.length+' active</span></div><main class="body"><section class="clinician-heading"><div><span class="eyebrow">CLINICAL RESPONSE DESK</span><h2>Emergency referrals</h2><p>Review incoming emergencies and respond to the originating PHC.</p></div></section><div class="clinician-referral-list">'+cards+'</div></main></div></div>';
     applyFacilityLanguage();updateSyncIndicator();
     clearInterval(window.phcClinicianPoll);
     window.phcClinicianPoll=setInterval(async()=>{if(document.hidden)return;try{const latest=await api("/api/referrals/clinician/inbox");if((latest.referrals||[]).map(x=>x.id+":"+x.updated_at).join("|")!==rows.map(x=>x.id+":"+x.updated_at).join("|"))clinicianWorkspace();}catch(_){}},5000);
@@ -272,7 +272,7 @@ async function dashboardView() {
     const me=await api("/api/auth/me"); STATE.user=me.user;
     if(STATE.user.role!=="system_admin"){
       if(STATE.user.role==="health_worker") window.location.replace("facility.html");
-      else if(STATE.user.role==="clinician") window.location.replace("clinician.html");
+      
       else root.innerHTML='<section class="panel setup-panel"><h2>Access denied</h2><p class="sub">This account is not authorised to use system administration.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
       return;
     }
@@ -351,7 +351,7 @@ async function handleSubmit(event) {
   if(form.id==="signupForm"){event.preventDefault();const d=formData(form);if(d.signupPassword!==d.signupPasswordConfirm){notify("The passwords do not match.",true);return;}if(!/^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}$/.test(d.signupPassword)){notify("Password must be at least 8 characters and contain letters and numbers only.",true);return;}try{await api("/api/auth/signup",{method:"POST",body:JSON.stringify({fullName:d.signupFullName,email:d.signupEmail,password:d.signupPassword})});notify("Account created. You can now sign in.");rootAuthLogin();}catch(error){notify(error.message,true);}return;}
   if(form.id==="loginForm"){
     event.preventDefault();const d=formData(form);
-    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(result.user.role==="clinician"?"clinician.html":(result.user.role==="health_worker"?"facility.html":"index.html")));}
+    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(result.user.role==="health_worker"?"facility.html":"index.html"));}
     catch(error){notify(error.message,true);}return;
   }
   if(form.id==="stockMovementForm"){
@@ -400,6 +400,26 @@ document.addEventListener("click",event=>{
     api("/api/admin/users/"+encodeURIComponent(userId)+"/facilities",{method:"POST",body:JSON.stringify({facilityId:select.value})})
       .then(()=>{notify("Facility assigned successfully.");dashboardView();})
       .catch(error=>{notify(error.message,true);assign.disabled=false;});
+    return;
+  }
+  const saveDesignation=event.target.closest("[data-save-user-designation]");
+  if(saveDesignation){
+    const id=saveDesignation.dataset.saveUserDesignation;
+    const select=document.querySelector('[data-user-designation="'+id+'"]');
+    saveDesignation.disabled=true;
+    api("/api/admin/users/"+encodeURIComponent(id)+"/designation",{method:"PATCH",body:JSON.stringify({designation:select.value||null})})
+      .then(()=>{notify("Professional designation updated.");dashboardView();})
+      .catch(error=>{notify(error.message,true);saveDesignation.disabled=false;});
+    return;
+  }
+  const saveClinical=event.target.closest("[data-save-clinical-access]");
+  if(saveClinical){
+    const id=saveClinical.dataset.saveClinicalAccess;
+    const input=document.querySelector('[data-user-clinical-access="'+id+'"]');
+    saveClinical.disabled=true;
+    api("/api/admin/users/"+encodeURIComponent(id)+"/clinical-access",{method:"PATCH",body:JSON.stringify({canRespondEmergency:input.checked})})
+      .then(()=>{notify("Clinical response access updated.");dashboardView();})
+      .catch(error=>{notify(error.message,true);saveClinical.disabled=false;});
     return;
   }
   const save=event.target.closest("[data-save-user-role]");
