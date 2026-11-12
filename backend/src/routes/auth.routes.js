@@ -49,7 +49,27 @@ router.post('/signup', async (req, res, next) => {
   }catch(error){if(error.code==='23505')return res.status(409).json({error:'An account with that email already exists.'});next(error);}
 });
 
-router.get('/me', requireAuth, (req, res) => res.json({ user: req.session.user }));
+router.get('/me', requireAuth, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      'SELECT id,full_name,email,role,designation,can_respond_emergency,is_active FROM users WHERE id=$1 LIMIT 1',
+      [req.session.user.id]
+    );
+    const user = result.rows[0];
+    if (!user || !user.is_active) {
+      return req.session.destroy(() => res.status(401).json({ error: 'Account is unavailable.' }));
+    }
+    req.session.user = {
+      id: user.id,
+      fullName: user.full_name,
+      email: user.email,
+      role: user.role,
+      designation: user.designation,
+      canRespondEmergency: user.can_respond_emergency
+    };
+    res.json({ user: req.session.user });
+  } catch (error) { next(error); }
+});
 
 router.post('/logout', (req, res, next) => {
   req.session.destroy((error) => {
