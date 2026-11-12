@@ -28,7 +28,8 @@ function updateSyncIndicator(){
   const count=readOutbox().length;
   node.innerHTML='<span class="sync-dot '+(navigator.onLine?"online":"offline")+'"></span>'+(navigator.onLine?"Online":"Offline")+(count?' · Saved: '+count+' waiting':'');
 }
-function queueOfflineAction(path,payload){
+function queueOfflineAction(path,payload,error){
+  if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
   if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path))return false;
   const operationId=payload.operationId||crypto.randomUUID();
   const item={id:operationId,path,method:"POST",payload:{...payload,operationId},createdAt:new Date().toISOString()};
@@ -350,7 +351,7 @@ async function handleSubmit(event) {
     const d=formData(form);
     const payload={operationId:crypto.randomUUID(),facilityId:STATE.facilityId,itemId:d.itemId,movementType:d.movementType,quantity:Number(d.quantity),adjustmentDirection:d.adjustmentDirection||"increase",batchNumber:d.batchNumber||null,expiryDate:d.expiryDate||null,note:d.note||null};
     try{await api("/api/inventory/movements",{method:"POST",body:JSON.stringify(payload)});notify("Stock movement recorded.");await facilityWorkspace();}
-    catch(error){notify(error.message,true);}
+    catch(error){if(queueOfflineAction("/api/inventory/movements",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}
     return;
   }
   if(form.id==="patientForm"){
