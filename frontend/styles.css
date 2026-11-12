@@ -545,3 +545,12 @@ body[data-workspace="facility"] .body>.panel:first-child{padding:0;border:0;back
 .admin-topbar-logout:hover{background:#f4f8f9;border-color:#cbd8de;color:#183b4d}
 .admin-topbar-logout svg{width:16px;height:16px;flex:none}
 @media(max-width:650px){.admin-topbar-actions{gap:9px}.admin-topbar-logout{min-height:34px;padding:6px 9px;font-size:9px}.admin-account{display:none}}
+
+
+/* Account role and professional designation controls */
+.admin-clinical-access{display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--muted,#607080);font-size:12px;font-weight:600}
+.admin-clinical-access input{width:16px;height:16px;accent-color:var(--primary,#176b57);flex:0 0 auto}
+.admin-table-panel td .role-edit{min-width:150px}
+.admin-table-panel td .role-edit select{max-width:180px}
+.admin-table-panel td .admin-clinical-access{white-space:nowrap}
+@media(max-width:760px){.admin-table-panel .table-wrap{overflow-x:auto}.admin-table-panel table{min-width:1080px}}
