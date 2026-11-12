@@ -163,8 +163,8 @@ router.patch('/users/:userId/designation', async (req,res,next)=>{
   if(!allowed.includes(designation))return res.status(400).json({error:'Select a valid professional designation.'});
   try{
     const result=await pool.query(
-      `UPDATE users SET designation=$1,
-         can_respond_emergency=CASE WHEN $1 IS NULL THEN FALSE ELSE can_respond_emergency END,
+      `UPDATE users SET designation=$1::text,
+         can_respond_emergency=CASE WHEN $1::text IS NULL THEN FALSE ELSE can_respond_emergency END,
          updated_at=NOW()
        WHERE id=$2 AND role='health_worker'
        RETURNING id,designation,can_respond_emergency`,
