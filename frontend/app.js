@@ -32,7 +32,8 @@ async function facilityWorkspace() {
   try {
     const me=await api("/api/auth/me"); STATE.user=me.user;
     if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
-    if(!["health_worker","clinician"].includes(STATE.user.role)){
+    if(STATE.user.role==="clinician"){window.location.replace("clinician.html");return;}
+    if(STATE.user.role!=="health_worker"){
       root.innerHTML='<section class="panel setup-panel"><h2>Workspace not available</h2><p class="sub">Your account role does not have access to the facility workspace. Contact the system administrator.</p><button class="btn sec" id="staffLogout" type="button">Sign out</button></section>'; return;
     }
     const result=await api("/api/facilities"), facilities=result.facilities||[];
@@ -90,7 +91,23 @@ async function facilityWorkspace() {
     else root.innerHTML='<section class="panel"><h2>Facility workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="render()">Retry</button></section>';
   }
 }
-function iconSvg(name){const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',stock:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/>',ref:'<path d="M4 7h14m-4-4 4 4-4 4M20 17H6m4-4-4 4 4 4"/>',patients:'<circle cx="10" cy="8" r="4"/><path d="M3 21v-1a7 7 0 0 1 14 0v1M18 8h4m-2-2v4"/>',ussd:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'};return '<svg class="facility-nav-icon" viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||'')+'</svg>';}
+
+async function clinicianWorkspace(){
+  const root=document.getElementById("root");
+  root.innerHTML='<div class="dashboard"><p class="sub">Loading emergency referrals…</p></div>';
+  try{
+    const me=await api("/api/auth/me");STATE.user=me.user;
+    if(STATE.user.role!=="clinician"){window.location.replace(STATE.user.role==="system_admin"?"admin.html":"facility.html");return;}
+    const data=await api("/api/referrals/clinician/inbox");
+    const rows=data.referrals||[];
+    const cards=rows.length?rows.map(r=>'<article class="clinician-referral"><div class="clinician-referral-top"><div><span class="clinician-emergency-label">EMERGENCY REFERRAL</span><h3>'+escapeHtml(r.referral_code)+'</h3><p>'+escapeHtml(r.origin_facility)+' · '+escapeHtml(r.origin_lga)+', '+escapeHtml(r.origin_state)+'</p></div><span class="clinician-status">'+escapeHtml(r.status)+'</span></div><div class="clinician-patient"><strong>'+escapeHtml(r.patient_name||"Patient details unavailable")+'</strong><span>'+escapeHtml(r.patient_code||"")+' · '+escapeHtml(r.sex||"Sex not recorded")+'</span><small>'+escapeHtml(r.reason_code||"Emergency")+' · '+escapeHtml(new Date(r.created_at).toLocaleString())+'</small></div><form class="clinician-response-form" data-referral-id="'+escapeHtml(r.id)+'"><label for="instruction-'+escapeHtml(r.id)+'">Instruction to PHC (optional)</label><textarea id="instruction-'+escapeHtml(r.id)+'" name="notes" rows="2" maxlength="500" placeholder="e.g. Give IV fluids, refer now"></textarea><div><button class="btn clinician-accept" type="button" data-clinician-action="acknowledged" data-referral-id="'+escapeHtml(r.id)+'">REF-OK · Accept</button><button class="btn sec clinician-reject" type="button" data-clinician-action="rejected" data-referral-id="'+escapeHtml(r.id)+'">REF-NO · Cannot accept</button></div></form></article>').join(""):'<section class="clinician-empty"><span>✓</span><h3>No active emergency referrals</h3><p>New emergency referrals from PHCs will appear here automatically.</p></section>';
+    root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>PHC Link · Clinician</b><small>'+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.designation||"Clinician")+'</small></div><div class="clinician-header-actions"><span class="clinician-live"><i></i> Live emergency queue</span><button class="btn sec sm" id="clinicianLogout" type="button">Sign out</button></div></header><div class="net"><span>Emergency referrals across PHC Link</span><span>'+rows.length+' active</span></div><main class="body"><section class="clinician-heading"><div><span class="eyebrow">CLINICAL RESPONSE DESK</span><h2>Emergency referrals</h2><p>Review incoming emergencies and respond to the originating PHC.</p></div></section><div class="clinician-referral-list">'+cards+'</div></main></div></div>';
+    applyFacilityLanguage();
+    clearInterval(window.phcClinicianPoll);
+    window.phcClinicianPoll=setInterval(async()=>{if(document.hidden)return;try{const latest=await api("/api/referrals/clinician/inbox");if((latest.referrals||[]).map(x=>x.id+":"+x.updated_at).join("|")!==rows.map(x=>x.id+":"+x.updated_at).join("|"))clinicianWorkspace();}catch(_){}},5000);
+  }catch(error){root.innerHTML='<section class="panel"><h2>Clinician workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="clinicianWorkspace()">Retry</button></section>';}
+}
+\nfunction iconSvg(name){const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',stock:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/>',ref:'<path d="M4 7h14m-4-4 4 4-4 4M20 17H6m4-4-4 4 4 4"/>',patients:'<circle cx="10" cy="8" r="4"/><path d="M3 21v-1a7 7 0 0 1 14 0v1M18 8h4m-2-2v4"/>',ussd:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'};return '<svg class="facility-nav-icon" viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||'')+'</svg>';}
 function field(label,name,type="text",required=true,extra="") {
   return '<label for="'+name+'">'+label+'</label><input id="'+name+'" name="'+name+'" type="'+type+'" '+(required?'required':'')+' '+extra+'>';
 }
@@ -190,7 +207,8 @@ async function dashboardView() {
   try {
     const me=await api("/api/auth/me"); STATE.user=me.user;
     if(STATE.user.role!=="system_admin"){
-      if(["health_worker","clinician"].includes(STATE.user.role)) window.location.replace("facility.html");
+      if(STATE.user.role==="health_worker") window.location.replace("facility.html");
+      else if(STATE.user.role==="clinician") window.location.replace("clinician.html");
       else root.innerHTML='<section class="panel setup-panel"><h2>Access denied</h2><p class="sub">This account is not authorised to use system administration.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
       return;
     }
@@ -209,7 +227,8 @@ async function loginPageView() {
     try {
       const me=await api("/api/auth/me"), role=me.user.role;
       if(role==="system_admin") window.location.replace("admin.html");
-      else if(["health_worker","clinician"].includes(role)) window.location.replace("facility.html");
+      else if(role==="health_worker") window.location.replace("facility.html");
+      else if(role==="clinician") window.location.replace("clinician.html");
       else root.innerHTML='<section class="panel setup-panel"><h2>Workspace unavailable</h2><p class="sub">Your account role does not have a workspace yet. Contact the system administrator.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
     } catch(error) {
       if(error.message==="Authentication required.") root.innerHTML=loginView();
@@ -267,7 +286,7 @@ async function handleSubmit(event) {
   if(form.id==="signupForm"){event.preventDefault();const d=formData(form);if(d.signupPassword!==d.signupPasswordConfirm){notify("The passwords do not match.",true);return;}if(!/^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}$/.test(d.signupPassword)){notify("Password must be at least 8 characters and contain letters and numbers only.",true);return;}try{await api("/api/auth/signup",{method:"POST",body:JSON.stringify({fullName:d.signupFullName,email:d.signupEmail,password:d.signupPassword})});notify("Account created. You can now sign in.");rootAuthLogin();}catch(error){notify(error.message,true);}return;}
   if(form.id==="loginForm"){
     event.preventDefault();const d=formData(form);
-    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(["health_worker","clinician"].includes(result.user.role)?"facility.html":"index.html"));}
+    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(result.user.role==="clinician"?"clinician.html":(result.user.role==="health_worker"?"facility.html":"index.html")));}
     catch(error){notify(error.message,true);}return;
   }
   if(form.id==="stockMovementForm"){
@@ -340,7 +359,7 @@ document.addEventListener("input",event=>{
   }
 });
 document.addEventListener("click",async event=>{
-  if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")){
+  if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")||event.target.closest("#clinicianLogout")){
     try{await api("/api/auth/logout",{method:"POST"});STATE.user=null;STATE.facilityId=null;notify("Signed out.");window.location.assign("index.html");}
     catch(error){notify(error.message,true);}
   }
