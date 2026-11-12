@@ -493,3 +493,48 @@ body[data-workspace="facility"] .body>.panel:first-child{padding:0;border:0;back
 }
 @media(max-width:370px){.facility-metrics{grid-template-columns:1fr}.facility-metric{align-items:center}}
 :root[data-theme="dark"] body[data-workspace="facility"] .hdr,:root[data-theme="dark"] body[data-workspace="facility"] .tabs{background:#172633}
+
+
+/* PHC Link offline, language and clinician additions */
+.facility-header-actions,.clinician-header-actions{display:flex;align-items:center;gap:8px}
+#networkIndicator{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:#617581}
+.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#8b949b}
+.sync-dot.online{background:#239b65;box-shadow:0 0 0 3px #239b651a}
+.sync-dot.offline{background:#92999e}
+.clinician-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.clinician-heading h2{margin:7px 0;color:var(--ink);font:750 24px Manrope,sans-serif}
+.clinician-heading p{margin:0;color:var(--muted);font-size:12px}
+.clinician-referral-list{display:grid;gap:13px}
+.clinician-referral{padding:19px;border:1px solid #ead7d7;border-left:4px solid #c83e42;border-radius:11px;background:var(--white);box-shadow:0 3px 12px #182f3b08}
+.clinician-referral-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.clinician-emergency-label{color:#bd3b40;font-size:9px;font-weight:800;letter-spacing:.12em}
+.clinician-referral-top h3{margin:5px 0;color:var(--ink);font:750 17px Manrope,sans-serif}
+.clinician-referral-top p{margin:0;color:var(--muted);font-size:11px}
+.clinician-status{padding:5px 8px;border-radius:6px;background:#fff1f0;color:#b63e42;font-size:9px;font-weight:800;text-transform:uppercase}
+.clinician-patient{display:grid;gap:4px;margin:15px 0;padding:12px;border-radius:8px;background:var(--canvas)}
+.clinician-patient strong{color:var(--ink);font-size:13px}
+.clinician-patient span,.clinician-patient small{color:var(--muted);font-size:10px}
+.clinician-response-form{display:grid;gap:8px}
+.clinician-response-form label{font-size:10px;font-weight:700;color:var(--ink)}
+.clinician-response-form textarea{width:100%;min-height:65px;padding:10px;border:1px solid var(--line);border-radius:7px;background:var(--white);color:var(--ink);font:inherit;font-size:12px;resize:vertical}
+.clinician-response-form>div{display:flex;gap:8px;flex-wrap:wrap}
+.clinician-response-form .btn{min-height:42px;font-size:11px;font-weight:800}
+.clinician-accept{background:#16865c!important;color:white!important}
+.clinician-reject{border-color:#d8a5a5!important;color:#a33b3f!important}
+.clinician-empty{display:grid;justify-items:center;gap:8px;padding:55px 18px;border:1px dashed var(--line);border-radius:12px;background:var(--white);text-align:center}
+.clinician-empty>span{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#eaf6ef;color:#258657;font-size:22px}
+.clinician-empty h3{margin:0;color:var(--ink);font-size:15px}
+.clinician-empty p{margin:0;color:var(--muted);font-size:11px}
+.clinician-live{display:inline-flex;align-items:center;gap:6px;color:#20875c;font-size:10px;font-weight:700;white-space:nowrap}
+.clinician-live i{width:7px;height:7px;border-radius:50%;background:#239b65}
+:root[data-theme="dark"] .clinician-referral{border-color:#563b40;border-left-color:#d75a5f}
+:root[data-theme="dark"] .clinician-status{background:#45282b;color:#ff9a9d}
+:root[data-theme="dark"] .clinician-empty{background:var(--white)}
+@media(max-width:620px){
+ .facility-header-actions,.clinician-header-actions{gap:5px;flex-wrap:wrap;justify-content:flex-end}
+ .facility-header-actions .btn,.clinician-header-actions .btn{padding:7px 9px;font-size:9px}
+ .clinician-referral{padding:14px}
+ .clinician-heading h2{font-size:21px}
+ .clinician-response-form>div{display:grid;grid-template-columns:1fr}
+ .clinician-response-form .btn{width:100%}
+}
