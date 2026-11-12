@@ -34,16 +34,49 @@ router.get('/', async (req, res, next) => {
       `SELECT r.id, r.referral_code, r.origin_facility_id, r.destination_facility_id,
               r.patient_id, p.patient_code, p.full_name AS patient_name, r.reason_code, r.urgency,
               r.status, r.created_at, r.updated_at,
+              latest_event.event_type AS latest_event_type, latest_event.notes AS clinician_reply,
+              latest_event.created_at AS reply_at,
               src.name AS origin_facility, dst.name AS destination_facility
        FROM referrals r JOIN facilities src ON src.id = r.origin_facility_id
        JOIN facilities dst ON dst.id = r.destination_facility_id
        LEFT JOIN patients p ON p.id = r.patient_id
+       LEFT JOIN LATERAL (
+         SELECT event_type, notes, created_at FROM referral_events
+         WHERE referral_id = r.id ORDER BY created_at DESC LIMIT 1
+       ) latest_event ON TRUE
        WHERE r.origin_facility_id = $1 OR r.destination_facility_id = $1
        ORDER BY r.created_at DESC LIMIT 100`, [facilityId]
     );
     res.json({ referrals: result.rows });
   } catch (error) { next(error); }
   finally { client.release(); }
+});
+
+
+router.get('/clinician/inbox', async (req, res, next) => {
+  if (req.session.user.role !== 'clinician') return res.status(403).json({ error: 'Clinician access required.' });
+  try {
+    const result = await pool.query(
+      `SELECT r.id,r.referral_code,r.urgency,r.status,r.reason_code,r.created_at,r.updated_at,
+              p.patient_code,p.full_name AS patient_name,p.sex,p.date_of_birth,
+              src.name AS origin_facility,src.code AS origin_code,
+              l.name AS origin_lga,s.name AS origin_state,
+              latest_event.notes AS latest_reply
+       FROM referrals r
+       JOIN facilities src ON src.id=r.origin_facility_id
+       JOIN lgas l ON l.id=src.lga_id
+       JOIN states s ON s.id=l.state_id
+       LEFT JOIN patients p ON p.id=r.patient_id
+       LEFT JOIN LATERAL (
+         SELECT notes FROM referral_events WHERE referral_id=r.id
+         ORDER BY created_at DESC LIMIT 1
+       ) latest_event ON TRUE
+       WHERE r.urgency='emergency' AND r.status IN ('submitted','acknowledged')
+       ORDER BY CASE WHEN r.status='submitted' THEN 0 ELSE 1 END, r.created_at ASC
+       LIMIT 250`
+    );
+    res.json({ referrals: result.rows });
+  } catch (error) { next(error); }
 });
 
 router.post('/', async (req, res, next) => {
@@ -109,7 +142,7 @@ router.patch('/:id/status', async (req, res, next) => {
   try {
     const { status, notes = null } = req.body;
     const transitions = {
-      submitted: ['acknowledged', 'cancelled'],
+      submitted: ['acknowledged', 'rejected', 'cancelled'],
       acknowledged: ['arrived', 'rejected', 'cancelled'],
       arrived: ['completed'],
       rejected: [], cancelled: [], completed: []
@@ -127,7 +160,16 @@ router.patch('/:id/status', async (req, res, next) => {
     const user = req.session.user;
     const allowedFacility = ['acknowledged', 'arrived', 'completed', 'rejected'].includes(status)
       ? referral.destination_facility_id : referral.origin_facility_id;
-    const canUpdate = await canAccessFacility(client, user, allowedFacility) || ['state_admin', 'system_admin'].includes(user.role);
+    const clinicianEmergencyAction = user.role === 'clinician' && referral.urgency === 'emergency' && ['acknowledged','rejected'].includes(status);
+    const canUpdate = clinicianEmergencyAction || await canAccessFacility(client, user, allowedFacility) || ['state_admin', 'system_admin'].includes(user.role);
+    if (user.role === 'clinician' && !clinicianEmergencyAction && !await canAccessFacility(client, user, allowedFacility)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Clinicians can only respond to emergency referrals.' });
+    }
+    if (notes !== null && String(notes).length > 500) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Instructions must be 500 characters or fewer.' });
+    }
     if (!canUpdate) {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'You cannot update this referral.' });
