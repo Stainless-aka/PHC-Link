@@ -8,7 +8,7 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
 }
 async function api(path, options={}) {
-  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, cacheable=method==="GET"&&!path.startsWith("/api/admin")&&!path.startsWith("/api/referrals/clinician");
+  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&["/api/auth/me","/api/facilities","/api/inventory/items","/api/inventory/balances","/api/patients"].includes(route);
   let response;
   try { response=await fetch(API_BASE_URL+path,{...options,credentials:"include",mode:"cors",headers:{"Content-Type":"application/json",...(options.headers||{})}}); }
   catch(error) {
@@ -435,7 +435,7 @@ document.addEventListener("click",async event=>{
     return;
   }
   if(event.target.closest("#logoutButton")||event.target.closest("#staffLogout")||event.target.closest("#clinicianLogout")){
-    try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{localStorage.removeItem("phclink-cache:/api/auth/me");STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
+    try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:")).forEach(key=>localStorage.removeItem(key));STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
     catch(error){notify(error.message,true);}
   }
 });
