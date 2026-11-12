@@ -12,7 +12,7 @@ router.get('/overview', async (req, res, next) => {
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
       pool.query('SELECT f.id,f.name,f.code,f.lga_id,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
-      pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.designation,u.phone,u.is_active, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
+      pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.designation,u.phone,u.is_active,u.can_respond_emergency, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
       pool.query('SELECT id,name,category,unit,default_minimum_stock FROM inventory_items WHERE is_active=TRUE ORDER BY category,name'),
       pool.query('SELECT count(*)::int AS count FROM referrals'),
       pool.query(`SELECT r.id,r.referral_code,r.reason_code,r.urgency,r.status,r.created_at,r.updated_at,
@@ -70,24 +70,24 @@ router.post('/facilities', async (req,res,next) => {
 
 router.post('/users', async (req,res,next) => {
   try {
-    const {fullName,email,password,role,facilityId,lgaId,phone=null,designation=null}=req.body;
-    const allowed=['health_worker','clinician','lga_officer'];
+    const {fullName,email,password,role,facilityId,lgaId,phone=null,designation=null,canRespondEmergency=false}=req.body;
+    const allowed=['health_worker','lga_officer'];
     if(!String(fullName||'').trim()||!String(email||'').trim()||!password||password.length<12||!allowed.includes(role))
       return res.status(400).json({error:'Name, email, role and a password of at least 12 characters are required.'});
-    if(role==='health_worker'||role==='clinician'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
+    if(role==='health_worker'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
     if(role==='lga_officer'&&!lgaId) return res.status(400).json({error:'Select an LGA for this officer.'});
-    const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho'];
-    if(role==='clinician'&&!allowedDesignations.includes(designation)) return res.status(400).json({error:'Select the clinician professional designation.'});
-    if(role!=='clinician'&&designation) return res.status(400).json({error:'Designation is only available for clinicians.'});
+    const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho','other'];
+    if(designation&&!allowedDesignations.includes(designation)) return res.status(400).json({error:'Select a valid professional designation.'});
+    if(canRespondEmergency&&(!designation||role!=='health_worker')) return res.status(400).json({error:'Clinical referral access requires a health worker account and a professional designation.'});
     const client=await pool.connect();
     try{
       await client.query('BEGIN');
       const hash=await bcrypt.hash(password,12);
       const created=await client.query(
-        'INSERT INTO users(full_name,email,password_hash,role,phone,designation) VALUES($1,lower($2),$3,$4,$5,$6) RETURNING id,full_name,email,role,phone,designation,is_active',
-        [String(fullName).trim(),String(email).trim(),hash,role,phone,designation||null]
+        'INSERT INTO users(full_name,email,password_hash,role,phone,designation,can_respond_emergency) VALUES($1,lower($2),$3,$4,$5,$6,$7) RETURNING id,full_name,email,role,phone,designation,can_respond_emergency,is_active',
+        [String(fullName).trim(),String(email).trim(),hash,role,phone,designation||null,Boolean(canRespondEmergency)]
       );
-      if(facilityId&&(role==='health_worker'||role==='clinician'))
+      if(facilityId&&role==='health_worker')
         await client.query('INSERT INTO facility_users(facility_id,user_id) VALUES($1,$2)',[facilityId,created.rows[0].id]);
       if(lgaId&&role==='lga_officer')
         await client.query('INSERT INTO user_lga_access(user_id,lga_id) VALUES($1,$2)',[created.rows[0].id,lgaId]);
@@ -108,7 +108,7 @@ router.post('/users/:userId/facilities', async (req,res,next)=>{
     await client.query('BEGIN');
     const user=await client.query('SELECT id,role FROM users WHERE id=$1 FOR UPDATE',[req.params.userId]);
     if(!user.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
-    if(!['health_worker','clinician'].includes(user.rows[0].role)){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers and clinicians.'});}
+    if(user.rows[0].role!=='health_worker'){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers and clinicians.'});}
     const facility=await client.query('SELECT id FROM facilities WHERE id=$1 AND is_active=TRUE',[facilityId]);
     if(!facility.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Active facility not found.'});}
     // A health worker or clinician may have only one active facility at a time.
@@ -125,7 +125,7 @@ router.post('/users/:userId/facilities', async (req,res,next)=>{
 
 router.patch('/users/:userId/role', async (req,res,next)=>{
   if(req.params.userId===req.session.user.id)return res.status(400).json({error:'You cannot change your own administrator role.'});
-  const allowed=['health_worker','clinician','lga_officer','state_admin','system_admin'];
+  const allowed=['health_worker','lga_officer','state_admin','system_admin'];
   const role=String(req.body.role||'');
   if(!allowed.includes(role))return res.status(400).json({error:'Select a valid account role.'});
   const client=await pool.connect();
@@ -133,7 +133,7 @@ router.patch('/users/:userId/role', async (req,res,next)=>{
     await client.query('BEGIN');
     const updated=await client.query('UPDATE users SET role=$1,updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active',[role,req.params.userId]);
     if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
-    if(['health_worker','clinician'].includes(role)) await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
+    if(role==='health_worker') await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
     else {
       await client.query('DELETE FROM facility_users WHERE user_id=$1',[req.params.userId]);
       await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
@@ -157,4 +157,4 @@ router.post('/inventory-items', async(req,res,next)=>{
   }catch(error){if(error.code==='23505')return res.status(409).json({error:'That inventory item and unit already exist.'});next(error);}
 });
 
-module.exports=router;
+router.patch('/users/:userId/clinical-access', async (req,res,next)=>{\n  const enabled=Boolean(req.body.canRespondEmergency);\n  try{\n    const result=await pool.query(\n      `UPDATE users SET can_respond_emergency=$1,updated_at=NOW()\n       WHERE id=$2 AND role='health_worker'\n         AND ($1=FALSE OR designation IS NOT NULL)\n       RETURNING id,can_respond_emergency`,\n      [enabled,req.params.userId]\n    );\n    if(!result.rowCount)return res.status(400).json({error:'Clinical referral access requires a health worker with a professional designation.'});\n    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',[req.session.user.id,'USER_CLINICAL_ACCESS_CHANGED','user',req.params.userId,JSON.stringify({canRespondEmergency:enabled})]);\n    res.json({user:result.rows[0]});\n  }catch(error){next(error);}\n});\n\nmodule.exports=router;
