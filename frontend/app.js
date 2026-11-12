@@ -66,7 +66,7 @@ function applyFacilityLanguage(){
   node.nodeValue=lang==="ha"&&translated?node.nodeValue.replace(original,translated):node.__phcEnglish;
  }
  root.querySelectorAll("[placeholder],[aria-label],[title]").forEach(el=>["placeholder","aria-label","title"].forEach(attr=>{
-  const value=el.getAttribute(attr);if(!value)return;const key="en"+attr;if(!el.dataset[key])el.dataset[key]=value;
+  const value=el.getAttribute(attr);if(!value)return;const key="en"+attr.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase());if(!el.dataset[key])el.dataset[key]=value;
   const original=el.dataset[key];el.setAttribute(attr,lang==="ha"?(HAUSA[original]||original):original);
  }));
  const toggle=root.querySelector("[data-language-switch]");if(toggle)toggle.textContent=lang==="ha"?"Hausa | English":"English | Hausa";
