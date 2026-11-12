@@ -162,10 +162,6 @@ router.patch('/:id/status', async (req, res, next) => {
       ? referral.destination_facility_id : referral.origin_facility_id;
     const clinicianEmergencyAction = user.role === 'health_worker' && user.canRespondEmergency && referral.urgency === 'emergency' && ['acknowledged','rejected'].includes(status);
     const canUpdate = clinicianEmergencyAction || await canAccessFacility(client, user, allowedFacility) || ['state_admin', 'system_admin'].includes(user.role);
-    if (user.canRespondEmergency && !clinicianEmergencyAction && !await canAccessFacility(client, user, allowedFacility)) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'Clinical referral officers can only respond to emergency referrals.' });
-    }
     if (notes !== null && String(notes).length > 500) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Instructions must be 500 characters or fewer.' });
