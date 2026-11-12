@@ -8,13 +8,42 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
 }
 async function api(path, options={}) {
-  const response = await fetch(API_BASE_URL + path, {
-    ...options, credentials:"include", mode:"cors",
-    headers:{ "Content-Type":"application/json", ...(options.headers||{}) }
-  });
-  const payload = response.status === 204 ? {} : await response.json().catch(()=>({}));
-  if (!response.ok) throw new Error(payload.error || "Request failed. Please try again.");
+  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path;
+  let response;
+  try { response=await fetch(API_BASE_URL+path,{...options,credentials:"include",mode:"cors",headers:{"Content-Type":"application/json",...(options.headers||{})}}); }
+  catch(error) {
+    if(method==="GET"){try{const cached=localStorage.getItem(cacheKey);if(cached)return JSON.parse(cached);}catch(_){}}
+    throw new Error("Network unavailable. Your action can be saved offline.");
+  }
+  const payload=response.status===204?{}:await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(payload.error||"Request failed. Please try again.");
+  if(method==="GET"){try{localStorage.setItem(cacheKey,JSON.stringify(payload));}catch(_){}}
   return payload;
+}
+function outboxKey(){return "phclink-outbox-v1:"+(STATE.user?.id||"unknown");}
+function readOutbox(){try{return JSON.parse(localStorage.getItem(outboxKey())||"[]");}catch(_){return [];}}
+function writeOutbox(items){try{localStorage.setItem(outboxKey(),JSON.stringify(items));}catch(_){notify("Device storage is full. Connect and retry to avoid losing this action.",true);}}
+function updateSyncIndicator(){
+  const node=document.getElementById("networkIndicator");if(!node)return;
+  const count=readOutbox().length;
+  node.innerHTML='<span class="sync-dot '+(navigator.onLine?"online":"offline")+'"></span>'+(navigator.onLine?"Online":"Offline")+(count?' · Saved: '+count+' waiting':'');
+}
+function queueOfflineAction(path,payload){
+  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path))return false;
+  const operationId=payload.operationId||crypto.randomUUID();
+  const item={id:operationId,path,method:"POST",payload:{...payload,operationId},createdAt:new Date().toISOString()};
+  const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);writeOutbox(queue);updateSyncIndicator();return true;
+}
+async function flushOfflineQueue(){
+  if(!navigator.onLine||!STATE.user)return;
+  const queue=readOutbox();if(!queue.length){updateSyncIndicator();return;}
+  const remaining=[];
+  for(let i=0;i<queue.length;i++){
+    try{await api(queue[i].path,{method:queue[i].method,body:JSON.stringify(queue[i].payload)});}
+    catch(error){remaining.push(...queue.slice(i));break;}
+  }
+  writeOutbox(remaining);updateSyncIndicator();
+  if(queue.length>remaining.length)notify("Offline actions synchronised successfully.");
 }
 function notify(message, error=false) {
   const toast=document.getElementById("toast");
@@ -23,7 +52,24 @@ function notify(message, error=false) {
   toast.style.background=error?"#8b3434":"#142f43";
   clearTimeout(notify.timer); notify.timer=setTimeout(()=>toast.hidden=true,4500);
 }
-function facilityLoginView() {
+const HAUSA={
+"Home":"Gida","Stock":"Hannun Jari","Referrals":"Tura Mara lafiya","Patients":"Marasa lafiya","USSD":"USSD","Sign out":"Fita","Emergency":"Gaggawa","Routine":"Na yau da kullum","Urgent":"Mai gaggawa","Create referral":"Kirkiri tura mara lafiya","Select registered patient":"Zabi mara lafiyar da aka yi rajista","Destination facility":"Asibitin da za a kai","Reason for referral":"Dalilin turawa","Urgency":"Matsayin gaggawa","Register a patient":"Yi rajistar mara lafiya","Register patient":"Yi rajistar mara lafiya","Patient register":"Jerin marasa lafiya","Patient full name":"Cikakken sunan mara lafiya","Date of birth (optional)":"Ranar haihuwa (ba dole ba)","Sex (optional)":"Jinsi (ba dole ba)","Phone number (optional)":"Lambar waya (ba dole ba)","Available stock":"Magunguna da kayan aiki da ake da su","Record stock movement":"Shigar da motsin kaya","Inventory item":"Kayan magani","Movement type":"Nau'in motsi","Quantity":"Adadi","Adjustment direction":"Hanyar gyara","Increase":"Kara","Decrease":"Rage","Batch number (optional)":"Lambar rukuni (ba dole ba)","Expiry date (optional)":"Ranar karewa (ba dole ba)","Reason / note":"Dalili / bayani","Save stock movement":"Ajiye motsin kaya","Select an option":"Zabi","Drug Out of Stock":"Magani Ya Kare","No Worker":"Babu Ma'aikaci","Create account":"Kirkiri asusu","Confirm password":"Tabbatar da kalmar sirri","Password":"Kalmar sirri","Email address":"Adireshin imel","Full name":"Cikakken suna","Sign in to facility":"Shiga asibiti"};
+function currentLanguage(){return localStorage.getItem("phclink-language")==="ha"?"ha":"en";}
+function applyFacilityLanguage(){
+ const lang=currentLanguage(),root=document.getElementById("root");document.documentElement.lang=lang==="ha"?"ha":"en";if(!root)return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
+ while(node=walker.nextNode()){
+  if(!node.parentElement||["SCRIPT","STYLE"].includes(node.parentElement.tagName)||node.parentElement.closest("[data-language-switch]"))continue;
+  if(node.__phcEnglish===undefined)node.__phcEnglish=node.nodeValue;
+  const original=node.__phcEnglish.trim(),translated=HAUSA[original];
+  node.nodeValue=lang==="ha"&&translated?node.nodeValue.replace(original,translated):node.__phcEnglish;
+ }
+ root.querySelectorAll("[placeholder],[aria-label],[title]").forEach(el=>["placeholder","aria-label","title"].forEach(attr=>{
+  const value=el.getAttribute(attr);if(!value)return;const key="en"+attr;if(!el.dataset[key])el.dataset[key]=value;
+  const original=el.dataset[key];el.setAttribute(attr,lang==="ha"?(HAUSA[original]||original):original);
+ }));
+ const toggle=root.querySelector("[data-language-switch]");if(toggle)toggle.textContent=lang==="ha"?"Hausa | English":"English | Hausa";
+}\nfunction facilityLoginView() {
   return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FACILITY WORKSPACE</div><h2>Staff sign in</h2><p class="sub">Registered health workers and clinicians can access their assigned facility after signing in.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in to facility</button></form></div></section>';
 }
 async function facilityWorkspace() {
