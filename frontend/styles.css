@@ -538,3 +538,10 @@ body[data-workspace="facility"] .body>.panel:first-child{padding:0;border:0;back
  .clinician-response-form>div{display:grid;grid-template-columns:1fr}
  .clinician-response-form .btn{width:100%}
 }
+
+/* Admin topbar actions: keep account controls available on every screen size */
+.admin-topbar-actions{display:flex;align-items:center;gap:16px}
+.admin-topbar-logout{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:7px 11px;border:1px solid #dfe7eb;border-radius:7px;background:#fff;color:#526875;font-size:10px;font-weight:700;cursor:pointer;white-space:nowrap}
+.admin-topbar-logout:hover{background:#f4f8f9;border-color:#cbd8de;color:#183b4d}
+.admin-topbar-logout svg{width:16px;height:16px;flex:none}
+@media(max-width:650px){.admin-topbar-actions{gap:9px}.admin-topbar-logout{min-height:34px;padding:6px 9px;font-size:9px}.admin-account{display:none}}
