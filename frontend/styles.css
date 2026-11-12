@@ -245,3 +245,19 @@ body[data-workspace="admin"]>.top{display:none}
 .theme-toggle span:first-child{font-size:17px;line-height:1}
 .theme-toggle:hover{transform:translateY(-1px)}
 @media(max-width:520px){.theme-toggle{right:12px;bottom:calc(72px + env(safe-area-inset-bottom));min-height:39px;padding:0 12px}}
+
+
+/* Unified geographic network setup */
+.network-setup-panel{padding:20px}
+.network-setup-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:16px}
+.network-setup-step{min-width:0;padding:17px 16px;background:#fff}
+.network-setup-step+.network-setup-step{border-left:1px solid var(--line)}
+.network-step-heading{display:flex;align-items:flex-start;gap:10px;min-height:48px;margin-bottom:8px}
+.network-step-heading>span{display:grid;place-items:center;width:27px;height:27px;flex:none;border-radius:7px;background:#eaf4f3;color:var(--teal);font-size:10px;font-weight:800}
+.network-step-heading strong{display:block;color:var(--ink);font-size:12px}
+.network-step-heading small{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.45}
+.network-setup-step .admin-form{display:block}
+.network-setup-step .admin-form label{margin:12px 0 5px}
+.network-setup-step .admin-form input,.network-setup-step .admin-form select{min-height:39px}
+.network-setup-step .admin-form .btn{width:100%;margin-top:15px}
+@media(max-width:900px){.network-setup-grid{grid-template-columns:1fr}.network-setup-step+.network-setup-step{border-left:0;border-top:1px solid var(--line)}.network-setup-step{padding:16px 18px}.network-step-heading{min-height:0}}
