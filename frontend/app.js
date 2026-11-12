@@ -134,6 +134,7 @@ async function facilityWorkspace() {
     const nav=[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]];
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div><b>Facility workspace</b><small>Signed in as '+escapeHtml(STATE.user.fullName)+' · '+escapeHtml(STATE.user.role)+'</small></div><div class="facility-header-actions"><button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div>';
     applyFacilityLanguage();updateSyncIndicator();flushOfflineQueue();
+    clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),5000);
   } catch(error) {
     if(error.message==="Authentication required."){STATE.user=null;window.location.replace("index.html");}
     else root.innerHTML='<section class="panel"><h2>Facility workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="render()">Retry</button></section>';
@@ -141,12 +142,11 @@ async function facilityWorkspace() {
 }
 
 async function refreshFacilityReferrals(facilityId){
-  const body=document.getElementById("referralRecordsBody");if(!body)return;
+  const body=document.getElementById("referralRecordsBody"),homeList=document.getElementById("homeRecentReferrals");if(!body&&!homeList)return;
   try{
     const data=await api("/api/referrals?facilityId="+encodeURIComponent(facilityId));
     const rows=data.referrals||[];
     if(body)body.innerHTML=rows.length?rows.map(r=>'<tr><td>'+escapeHtml(r.referral_code)+'</td><td>'+escapeHtml(r.patient_name||r.patient_code||"—")+'</td><td>'+escapeHtml(r.origin_facility)+'</td><td>'+escapeHtml(r.destination_facility)+'</td><td>'+escapeHtml(r.urgency)+'</td><td>'+escapeHtml(r.clinician_reply||"Awaiting clinician response")+'</td><td><span class="pill '+(r.status==="completed"?"ok":(r.status==="rejected"||r.status==="cancelled"?"out":"q"))+'">'+escapeHtml(r.status)+'</span></td></tr>').join(""):'<tr><td colspan="7">No referrals recorded for this facility.</td></tr>';
-    const homeList=document.getElementById("homeRecentReferrals");
     if(homeList)homeList.innerHTML=rows.slice(0,5).map(r=>'<div class="facility-record facility-referral-record"><div><strong>'+escapeHtml(r.referral_code||"Referral")+'</strong><small>'+escapeHtml(r.patient_name||r.patient_code||"Patient")+' · '+escapeHtml(r.destination_facility||"Destination pending")+(r.clinician_reply?" · Reply: "+escapeHtml(r.clinician_reply):"")+'</small></div><span class="facility-status '+(String(r.status).toLowerCase()==="completed"?"is-complete":"")+'">'+escapeHtml(r.status||"Unknown")+'</span></div>').join("");
 
   }catch(_){}
