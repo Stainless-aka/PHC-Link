@@ -261,3 +261,23 @@ body[data-workspace="admin"]>.top{display:none}
 .network-setup-step .admin-form input,.network-setup-step .admin-form select{min-height:39px}
 .network-setup-step .admin-form .btn{width:100%;margin-top:15px}
 @media(max-width:900px){.network-setup-grid{grid-template-columns:1fr}.network-setup-step+.network-setup-step{border-left:0;border-top:1px solid var(--line)}.network-setup-step{padding:16px 18px}.network-step-heading{min-height:0}}
+
+
+/* Single-submit geographic network configuration */
+.network-setup-panel{padding:20px}
+.network-setup-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:16px}
+.network-form-section{min-width:0;padding:17px;background:#fff}
+.network-form-section+.network-form-section{border-left:1px solid var(--line)}
+.network-form-heading{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+.network-form-heading>span{display:grid;place-items:center;width:27px;height:27px;flex:none;border-radius:7px;background:#eaf4f3;color:var(--teal);font-size:10px;font-weight:800}
+.network-form-heading strong{display:block;color:var(--ink);font-size:12px}
+.network-form-heading small{display:block;margin-top:3px;color:var(--muted);font-size:10px}
+.network-form-fields{display:grid;grid-template-columns:1fr;gap:0}
+.network-form-fields label{margin:10px 0 5px}
+.network-form-fields input{min-height:39px}
+.network-form-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 17px;background:#f8fafb;border-top:1px solid var(--line)}
+.network-form-actions p{margin:0;color:var(--muted);font-size:10px}
+.network-form-actions .btn{width:auto;min-width:160px}
+.network-setup-form button:disabled{opacity:.65;cursor:wait}
+@media(max-width:900px){.network-setup-form{grid-template-columns:1fr}.network-form-section+.network-form-section{border-left:0;border-top:1px solid var(--line)}}
+@media(max-width:520px){.network-form-actions{align-items:stretch;flex-direction:column}.network-form-actions .btn{width:100%}}
