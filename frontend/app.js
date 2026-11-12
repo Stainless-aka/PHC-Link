@@ -70,7 +70,8 @@ function applyFacilityLanguage(){
   const original=el.dataset[key];el.setAttribute(attr,lang==="ha"?(HAUSA[original]||original):original);
  }));
  const toggle=root.querySelector("[data-language-switch]");if(toggle)toggle.textContent=lang==="ha"?"Hausa | English":"English | Hausa";
-}\nfunction facilityLoginView() {
+}
+function facilityLoginView() {
   return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FACILITY WORKSPACE</div><h2>Staff sign in</h2><p class="sub">Registered health workers and clinicians can access their assigned facility after signing in.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in to facility</button></form></div></section>';
 }
 async function facilityWorkspace() {
@@ -151,7 +152,8 @@ async function refreshFacilityReferrals(facilityId){
 
   }catch(_){}
 }
-\nasync function clinicianWorkspace(){
+
+async function clinicianWorkspace(){
   const root=document.getElementById("root");
   root.innerHTML='<div class="dashboard"><p class="sub">Loading emergency referrals…</p></div>';
   try{
@@ -166,7 +168,8 @@ async function refreshFacilityReferrals(facilityId){
     window.phcClinicianPoll=setInterval(async()=>{if(document.hidden)return;try{const latest=await api("/api/referrals/clinician/inbox");if((latest.referrals||[]).map(x=>x.id+":"+x.updated_at).join("|")!==rows.map(x=>x.id+":"+x.updated_at).join("|"))clinicianWorkspace();}catch(_){}},5000);
   }catch(error){root.innerHTML='<section class="panel"><h2>Clinician workspace unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="clinicianWorkspace()">Retry</button></section>';}
 }
-\nfunction iconSvg(name){const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',stock:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/>',ref:'<path d="M4 7h14m-4-4 4 4-4 4M20 17H6m4-4-4 4 4 4"/>',patients:'<circle cx="10" cy="8" r="4"/><path d="M3 21v-1a7 7 0 0 1 14 0v1M18 8h4m-2-2v4"/>',ussd:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'};return '<svg class="facility-nav-icon" viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||'')+'</svg>';}
+
+function iconSvg(name){const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',stock:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.3 7.7 7.7 4.4 7.7-4.4M12 12v9"/>',ref:'<path d="M4 7h14m-4-4 4 4-4 4M20 17H6m4-4-4 4 4 4"/>',patients:'<circle cx="10" cy="8" r="4"/><path d="M3 21v-1a7 7 0 0 1 14 0v1M18 8h4m-2-2v4"/>',ussd:'<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>'};return '<svg class="facility-nav-icon" viewBox="0 0 24 24" aria-hidden="true">'+(paths[name]||'')+'</svg>';}
 function field(label,name,type="text",required=true,extra="") {
   return '<label for="'+name+'">'+label+'</label><input id="'+name+'" name="'+name+'" type="'+type+'" '+(required?'required':'')+' '+extra+'>';
 }
