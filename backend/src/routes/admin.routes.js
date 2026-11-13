@@ -193,4 +193,42 @@ router.patch('/users/:userId/clinical-access', async (req,res,next)=>{
   }catch(error){next(error);}
 });
 
+router.get('/health-tips', async (req,res,next) => {
+  try {
+    const result=await pool.query('SELECT id,english_text,hausa_text,source_name,source_url,is_active,created_at FROM health_tips ORDER BY created_at DESC LIMIT 200');
+    res.json({tips:result.rows});
+  } catch(error){next(error);}
+});
+router.post('/health-tips', async (req,res,next) => {
+  try {
+    const english=String(req.body.english_text||'').trim(),hausa=String(req.body.hausa_text||'').trim();
+    const source=String(req.body.source_name||'PHC Link').trim().slice(0,120),sourceUrl=req.body.source_url?String(req.body.source_url).trim():null;
+    if(english.length<8||english.length>1000||hausa.length>1000)return res.status(400).json({error:'Enter an English tip and keep each language within 1,000 characters.'});
+    if(sourceUrl&&!/^https:\/\//i.test(sourceUrl))return res.status(400).json({error:'Source URL must use HTTPS.'});
+    const result=await pool.query('INSERT INTO health_tips(english_text,hausa_text,source_name,source_url,created_by) VALUES($1,$2,$3,$4,$5) RETURNING id,english_text,hausa_text,source_name,source_url,is_active,created_at',[english,hausa,source,sourceUrl,req.session.user.id]);
+    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,\'HEALTH_TIP_CREATED\',\'health_tip\',$2,$3)',[req.session.user.id,result.rows[0].id,JSON.stringify({source})]);
+    res.status(201).json({tip:result.rows[0]});
+  } catch(error){next(error);}
+});
+router.patch('/health-tips/:tipId', async (req,res,next) => {
+  try {
+    const english=String(req.body.english_text||'').trim(),hausa=String(req.body.hausa_text||'').trim();
+    const source=String(req.body.source_name||'PHC Link').trim().slice(0,120),sourceUrl=req.body.source_url?String(req.body.source_url).trim():null,active=req.body.is_active!==false;
+    if(english.length<8||english.length>1000||hausa.length>1000)return res.status(400).json({error:'Enter an English tip and keep each language within 1,000 characters.'});
+    if(sourceUrl&&!/^https:\/\//i.test(sourceUrl))return res.status(400).json({error:'Source URL must use HTTPS.'});
+    const result=await pool.query('UPDATE health_tips SET english_text=$1,hausa_text=$2,source_name=$3,source_url=$4,is_active=$5,updated_at=NOW() WHERE id=$6 RETURNING id,english_text,hausa_text,source_name,source_url,is_active,created_at',[english,hausa,source,sourceUrl,active,req.params.tipId]);
+    if(!result.rowCount)return res.status(404).json({error:'Health tip not found.'});
+    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,\'HEALTH_TIP_UPDATED\',\'health_tip\',$2,$3)',[req.session.user.id,req.params.tipId,JSON.stringify({source,isActive:active})]);
+    res.json({tip:result.rows[0]});
+  } catch(error){next(error);}
+});
+router.delete('/health-tips/:tipId', async (req,res,next) => {
+  try {
+    const result=await pool.query('DELETE FROM health_tips WHERE id=$1 RETURNING id',[req.params.tipId]);
+    if(!result.rowCount)return res.status(404).json({error:'Health tip not found.'});
+    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,\'HEALTH_TIP_DELETED\',\'health_tip\',$2)',[req.session.user.id,req.params.tipId]);
+    res.json({success:true});
+  } catch(error){next(error);}
+});
+
 module.exports=router;
