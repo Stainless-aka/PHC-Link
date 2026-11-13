@@ -126,7 +126,7 @@ router.get('/search', async (req, res, next) => {
     const query = String(req.query.q || '').trim();
     if (query.length < 2 || query.length > 160) return res.status(400).json({ error: 'Enter at least 2 characters to search.' });
     const result = await client.query(
-      `SELECT p.id,p.patient_code,p.age_years,p.sex,f.name AS registered_facility
+      `SELECT p.id,p.patient_code,p.age_years,p.sex,(p.pin_hash IS NULL) AS pin_setup_required,f.name AS registered_facility
        FROM patients p JOIN facilities f ON f.id=p.facility_id
        WHERE p.patient_code ILIKE $1 OR p.full_name ILIKE $1 OR COALESCE(p.phone,'') ILIKE $1
        ORDER BY p.created_at DESC LIMIT 30`,
@@ -182,7 +182,7 @@ router.post('/', async (req, res, next) => {
        (facility_id,patient_code,full_name,date_of_birth,age_years,sex,phone,created_by,operation_id,
         next_of_kin_name,next_of_kin_phone,blood_group,known_conditions,allergies,pin_hash)
        VALUES ($1,$2,$3,NULL,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-       RETURNING id,patient_code,age_years,sex,created_at`,
+       RETURNING id,patient_code,full_name,age_years,sex,created_at`,
       [facilityId,patientCode,details.fullName,details.ageYears,details.sex,details.phone,req.session.user.id,operationId,
        details.nextOfKinName,details.nextOfKinPhone,details.bloodGroup,details.knownConditions,details.allergies,pinHash]
     );
