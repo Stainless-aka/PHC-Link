@@ -117,7 +117,6 @@ async function facilityWorkspace() {
   try {
     const me=await api("/api/auth/me"); STATE.user=me.user;
     if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
-    
     if(STATE.user.role==="clinician"&&STATE.page!=="patients"){window.location.replace("clinician.html");return;}
     if(!["health_worker","clinician","lga_officer"].includes(STATE.user.role)){
       root.innerHTML='<section class="panel setup-panel"><h2>Workspace not available</h2><p class="sub">Your account role does not have access to the facility workspace. Contact the system administrator.</p><button class="btn sec" id="staffLogout" type="button">Sign out</button></section>'; return;
@@ -174,7 +173,7 @@ async function facilityWorkspace() {
       (stockRows.length?'<div class="facility-stock-list">'+stockRows.slice(0,6).map(item=>'<div><span>'+escapeHtml(item.name)+'</span><strong>'+escapeHtml(item.quantity)+' <small>'+escapeHtml(item.unit)+'</small></strong></div>').join("")+'</div>':'<div class="facility-empty compact"><strong>No stock balances recorded</strong><p>Stock balances will appear after movements are recorded.</p><a href="stock.html">Open stock management</a></div>')+'</section></div>';
     }
     content+='</section>';
-    const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]];
+    const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"]]:(STATE.user.role==="lga_officer"?[["home","LGA overview","facility.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]]);
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+((STATE.user.role==="clinician"||STATE.user.canRespondEmergency)?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div><div id="patientEditor" class="patient-editor" hidden><section class="patient-editor-card" role="dialog" aria-modal="true" aria-labelledby="patientEditorTitle"><div class="panel-head"><div><h3 id="patientEditorTitle">Edit patient details</h3><p>Update the selected patient record.</p></div><button class="btn sec sm" type="button" data-close-patient-editor>Close</button></div><form id="patientEditForm" class="admin-form"><input type="hidden" name="patientId" id="editPatientId">'+field("Patient full name","editPatientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","editPatientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","editPatientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","editPatientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<div class="patient-editor-actions"><button class="btn sec" type="button" data-close-patient-editor>Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>';
     applyFacilityLanguage();updateSyncIndicator();flushOfflineQueue();
     clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),5000);
@@ -298,7 +297,8 @@ async function dashboardView() {
   try {
     const me=await api("/api/auth/me"); STATE.user=me.user;
     if(STATE.user.role!=="system_admin"){
-      if(STATE.user.role==="health_worker") window.location.replace("facility.html");
+      if(["health_worker","lga_officer"].includes(STATE.user.role)) window.location.replace("facility.html");
+      else if(STATE.user.role==="clinician") window.location.replace("clinician.html");
       
       else root.innerHTML='<section class="panel setup-panel"><h2>Access denied</h2><p class="sub">This account is not authorised to use system administration.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
       return;
@@ -318,7 +318,8 @@ async function loginPageView() {
     try {
       const me=await api("/api/auth/me"), role=me.user.role;
       if(role==="system_admin") window.location.replace("admin.html");
-      else if(role==="health_worker") window.location.replace("facility.html");
+      else if(role==="health_worker"||role==="lga_officer") window.location.replace("facility.html");
+      else if(role==="clinician") window.location.replace("clinician.html");
       else root.innerHTML='<section class="panel setup-panel"><h2>Workspace unavailable</h2><p class="sub">Your account role does not have a workspace yet. Contact the system administrator.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
     } catch(error) {
       if(error.message==="Authentication required.") root.innerHTML=loginView();
