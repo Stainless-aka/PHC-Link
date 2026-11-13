@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node backend/src/server.js",
     "dev": "node --watch backend/src/server.js",
-    "check": "node --check backend/src/server.js && node --check backend/src/routes/patients.routes.js && node --check backend/src/routes/alerts.routes.js && node --check backend/src/routes/setup.routes.js && node --check backend/src/routes/admin.routes.js && node --check backend/src/routes/auth.routes.js && node --check backend/src/routes/facilities.routes.js && node --check backend/src/routes/inventory.routes.js && node --check backend/src/routes/referrals.routes.js && node --check frontend/app.js"
+    "check": "node --check backend/src/server.js && node --check backend/src/routes/patients.routes.js && node --check backend/src/routes/alerts.routes.js && node --check backend/src/routes/health.routes.js && node --check backend/src/routes/setup.routes.js && node --check backend/src/routes/admin.routes.js && node --check backend/src/routes/auth.routes.js && node --check backend/src/routes/facilities.routes.js && node --check backend/src/routes/inventory.routes.js && node --check backend/src/routes/referrals.routes.js && node --check frontend/app.js"
   },
   "engines": {
     "node": ">=20"
