@@ -413,7 +413,7 @@ async function handleSubmit(event) {
   catch(error){notify(error.message,true);}
 }
 document.addEventListener("submit",handleSubmit);
-document.addEventListener("click",event=>{
+document.addEventListener("click",async event=>{
   if(event.target.closest("[data-close-patient-card]")){event.target.closest(".patient-card-modal")?.remove();return;}
   if(event.target.closest("[data-print-patient-card]")){window.print();return;}
   const initializePatient=event.target.closest("[data-initialize-patient]");
