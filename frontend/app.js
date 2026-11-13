@@ -40,7 +40,7 @@ async function flushOfflineQueue(){
   const queue=readOutbox();if(!queue.length){updateSyncIndicator();return;}
   const remaining=[];
   for(let i=0;i<queue.length;i++){
-    try{await api(queue[i].path,{method:queue[i].method,body:JSON.stringify(queue[i].payload)});}
+    try{const synced=await api(queue[i].path,{method:queue[i].method,body:JSON.stringify(queue[i].payload)});if(queue[i].path==="/api/patients"&&synced.patientPin&&synced.qrCode)showPatientCard(synced);}
     catch(error){remaining.push(...queue.slice(i));break;}
   }
   writeOutbox(remaining);updateSyncIndicator();
