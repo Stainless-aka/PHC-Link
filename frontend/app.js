@@ -577,7 +577,7 @@ async function handleSubmit(event) {
         const existing=readOfflineProfile();
         if(existing){existing.user=result.user;existing.facilities=facilities;existing.expiresAt=Date.now()+OFFLINE_ACCESS_DAYS*86400000;existing.failedAttempts=0;existing.lockedUntil=0;localStorage.setItem(OFFLINE_PROFILE_KEY,JSON.stringify(existing));localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user:result.user}));localStorage.setItem("phclink-cache:/api/facilities",JSON.stringify({facilities}));window.location.assign(result.user.role==="clinician"?"clinician.html":"facility.html");}
         else offlinePinSetupView(result.user,facilities);
-      }else{notify("Signed in successfully.");window.location.assign("admin.html");}
+      }else{localStorage.removeItem(OFFLINE_PROFILE_KEY);notify("Signed in successfully.");window.location.assign("admin.html");}
     }catch(error){notify(error.message,true);}return;
   }
   if(form.id==="offlinePinSetupForm"){
@@ -769,7 +769,7 @@ document.addEventListener("click",async event=>{
     return;
   }
   if(event.target.closest("#logoutButton")||event.target.closest("[data-admin-logout]")||event.target.closest("#staffLogout")||event.target.closest("#clinicianLogout")){
-    try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{sessionStorage.removeItem("phclink-offline-unlocked");Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:")).forEach(key=>localStorage.removeItem(key));STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
+    try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{sessionStorage.removeItem("phclink-offline-unlocked");localStorage.removeItem(OFFLINE_PROFILE_KEY);Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:")).forEach(key=>localStorage.removeItem(key));STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
   }
 });
 render();
