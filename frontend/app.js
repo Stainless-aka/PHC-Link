@@ -30,7 +30,7 @@ function updateSyncIndicator(){
 }
 function queueOfflineAction(path,payload,error,method="POST"){
   if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
-  const isPatientEdit=/^\\/api\\/patients\\/[0-9a-f-]+$/i.test(path);
+  const isPatientEdit=path.startsWith("/api/patients/")&&!path.endsWith("/visits")&&path.split("/").length===4;
   if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits"))&&!isPatientEdit)return false;
   const operationId=payload.operationId||crypto.randomUUID();
   const item={id:operationId,path,method:isPatientEdit?"PATCH":method,payload:{...payload,operationId},createdAt:new Date().toISOString()};
