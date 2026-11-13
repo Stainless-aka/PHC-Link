@@ -30,7 +30,7 @@ function updateSyncIndicator(){
 }
 function queueOfflineAction(path,payload,error){
   if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
-  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path))return false;
+  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!/^\\/api\\/patients\\/[^/]+\\/visits$/.test(path))return false;
   const operationId=payload.operationId||crypto.randomUUID();
   const item={id:operationId,path,method:"POST",payload:{...payload,operationId},createdAt:new Date().toISOString()};
   const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);if(!writeOutbox(queue))return false;updateSyncIndicator();return true;
@@ -384,8 +384,9 @@ async function handleSubmit(event) {
   }
   if(form.id==="patientVisitForm"){
     event.preventDefault();const d=formData(form);
-    try{await api("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",{method:"POST",body:JSON.stringify(d)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];notify("Visit saved.");await facilityWorkspace();}
-    catch(error){notify(error.message,true);}return;
+    const payload={...d,operationId:crypto.randomUUID()};
+    try{await api("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",{method:"POST",body:JSON.stringify(payload)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];notify("Visit saved.");await facilityWorkspace();}
+    catch(error){if(queueOfflineAction("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}return;
   }
   if(form.id==="patientEditForm"){
     event.preventDefault();const d=formData(form);
