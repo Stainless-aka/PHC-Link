@@ -26,16 +26,13 @@ router.get('/overview', async (req, res, next) => {
                   JOIN lgas dst_lga ON dst_lga.id=dst.lga_id
                   LEFT JOIN users u ON u.id=r.created_by
                   ORDER BY r.created_at DESC LIMIT 250`),
-      pool.query(`SELECT p.id,p.patient_code,p.full_name,p.sex,p.created_at,
-                         f.id AS facility_id,f.name AS facility_name,
-                         l.name AS lga_name,s.name AS state_name
-                  FROM patients p
-                  JOIN facilities f ON f.id=p.facility_id
-                  JOIN lgas l ON l.id=f.lga_id
-                  JOIN states s ON s.id=l.state_id
-                  ORDER BY s.name,l.name,f.name,p.created_at DESC`)
+      pool.query(`SELECT f.id AS facility_id,f.name AS facility_name,l.name AS lga_name,s.name AS state_name,
+                         COUNT(p.id)::int AS patient_count
+                  FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id
+                  LEFT JOIN patients p ON p.facility_id=f.id
+                  GROUP BY f.id,f.name,l.name,s.name ORDER BY s.name,l.name,f.name`)
     ]);
-    res.json({ states:states.rows, lgas:lgas.rows, facilities:facilities.rows, users:users.rows, items:items.rows, referralCount:referrals.rows[0].count, referrals:referralRecords.rows, patients:patientRecords.rows });
+    res.json({ states:states.rows, lgas:lgas.rows, facilities:facilities.rows, users:users.rows, items:items.rows, referralCount:referrals.rows[0].count, referrals:referralRecords.rows, patientCounts:patientRecords.rows, patientCount:patientRecords.rows.reduce((sum,row)=>sum+Number(row.patient_count||0),0) });
   } catch (error) { next(error); }
 });
 
