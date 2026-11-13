@@ -584,3 +584,26 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .patient-editor-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
 .patient-editor-actions .btn{width:auto;min-width:120px}
 @media(max-width:520px){.patient-editor{align-items:end;padding:8px}.patient-editor-card{max-height:88vh;padding:17px;border-radius:14px 14px 8px 8px}.patient-editor-actions{display:grid;grid-template-columns:1fr 1fr}.patient-editor-actions .btn{width:100%;min-width:0}}
+
+
+/* Secure patient record and printable QR card */
+.patient-record-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px;padding:15px;margin:14px 0;border:1px solid var(--line);border-radius:10px;background:var(--surface,#f7fafc)}
+.patient-record-summary strong{grid-column:1/-1;font-size:18px}
+.patient-record-summary span{font-size:12px;color:var(--muted)}
+.patient-card-modal{position:fixed;z-index:200;inset:0;display:grid;place-items:center;padding:16px;background:#0c2437b8}
+.patient-card-print{width:min(100%,360px);padding:24px;border-radius:16px;background:#fff;color:#173047;text-align:center;box-shadow:0 18px 60px #0004}
+.patient-card-brand{font-size:10px;letter-spacing:1.5px;font-weight:800;color:#4c7188}
+.patient-card-print h2{margin:14px 0 4px;font-size:22px}
+.patient-card-qr{display:block;width:180px;height:180px;object-fit:contain;margin:16px auto}
+.patient-card-warning{font-size:12px;color:#8c3b2f;font-weight:600}
+.patient-card-pin{padding:10px;border:1px dashed #b9c7d1;border-radius:8px;font-size:15px}
+.patient-card-actions{display:flex;gap:9px;margin-top:18px}
+.patient-card-actions .btn{flex:1}
+@media(max-width:600px){.patient-record-summary{grid-template-columns:1fr}}
+@media print{
+ body>*:not(.patient-card-modal){display:none!important}
+ .patient-card-modal{position:static;display:block;padding:0;background:#fff}
+ .patient-card-print{width:85mm;box-shadow:none;border:1px solid #ddd;margin:0 auto}
+ .patient-card-actions,.patient-card-warning{display:none!important}
+ .patient-card-pin strong{visibility:hidden}
+}
