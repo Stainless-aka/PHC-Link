@@ -380,8 +380,33 @@ function adminIcon(name) {
   return '<svg class="admin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'+(paths[name]||paths.overview)+'</svg>';
 }
 
+function cleanHealthTipText(value){
+  const raw=String(value||"").trim();
+  if(!raw)return "";
+  let text=raw;
+  if(/<\/?[a-z][\s\S]*?>/i.test(raw)){
+    const parsed=new DOMParser().parseFromString(raw,"text/html");
+    parsed.querySelectorAll("script,style,noscript,iframe,svg,ul.links").forEach(node=>node.remove());
+    text=parsed.body.textContent||"";
+  }else{
+    const decoder=document.createElement("textarea");
+    decoder.innerHTML=raw;
+    text=decoder.value;
+  }
+  text=text.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi," ")
+    .replace(/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s+\d{1,2}\/\d{1,2}\/\d{4}(?:\s*[·-]\s*\d{1,2}:\d{2})?\b/gi," ")
+    .replace(/\bRead more\b/gi," ")
+    .replace(/\s+/g," ").trim();
+  const duplicate=text.match(/^(.{8,180}?)[.!?]?\s+\1[.!?]?$/i);
+  if(duplicate)text=duplicate[1].trim();
+  return text;
+}
 function adminHealthTipsPanel(tips){
-  const rows=(tips||[]).map(t=>'<div class="admin-health-tip-row"><div><strong>'+escapeHtml(t.english_text)+'</strong><small>'+escapeHtml(t.hausa_text||"Hausa translation not added")+' · '+escapeHtml(t.source_name||"PHC Link")+'</small>'+(t.source_url?'<a href="'+escapeHtml(t.source_url)+'" target="_blank" rel="noopener">Source</a>':'')+'</div><div class="admin-health-tip-actions"><button class="btn sec sm" type="button" data-edit-health-tip="'+escapeHtml(t.id)+'" data-english="'+escapeHtml(t.english_text)+'" data-hausa="'+escapeHtml(t.hausa_text||"")+'" data-source="'+escapeHtml(t.source_name||"PHC Link")+'" data-url="'+escapeHtml(t.source_url||"")+'">Edit</button><button class="btn danger sm" type="button" data-delete-health-tip="'+escapeHtml(t.id)+'">Delete</button></div></div>').join("");
+  const rows=(tips||[]).map(t=>{
+    const english=cleanHealthTipText(t.english_text),hausa=cleanHealthTipText(t.hausa_text);
+    const preview=english.length>420?english.slice(0,417).trimEnd()+"…":english;
+    return '<div class="admin-health-tip-row"><div class="admin-health-tip-copy"><strong>'+escapeHtml(preview)+'</strong><small>'+(hausa?escapeHtml(hausa):'<span class="translation-pending">Hausa translation pending</span>')+' · '+escapeHtml(t.source_name||"PHC Link")+'</small>'+(t.source_url?'<a href="'+escapeHtml(t.source_url)+'" target="_blank" rel="noopener">Open source</a>':'')+'</div><div class="admin-health-tip-actions"><button class="btn sec sm" type="button" data-edit-health-tip="'+escapeHtml(t.id)+'" data-english="'+escapeHtml(english)+'" data-hausa="'+escapeHtml(hausa)+'" data-source="'+escapeHtml(t.source_name||"PHC Link")+'" data-url="'+escapeHtml(t.source_url||"")+'">Edit</button><button class="btn danger sm" type="button" data-delete-health-tip="'+escapeHtml(t.id)+'">Delete</button></div></div>';
+  }).join("");
   return '<section id="adminHealthTips" class="admin-section"><div class="admin-section-heading"><div><span class="eyebrow">WORKER DASHBOARD CONTENT</span><h3>Health tips and official updates</h3><p>Add bilingual tips, edit imported updates and remove outdated content.</p></div><button class="btn sec sm" type="button" data-refresh-health-tips>Refresh official news</button></div><section class="panel admin-panel"><form id="adminHealthTipForm" class="admin-form"><input type="hidden" name="tipId"><label for="healthTipEnglish">English tip / update</label><textarea id="healthTipEnglish" name="english_text" rows="2" maxlength="1000" required></textarea><label for="healthTipHausa">Hausa translation</label><textarea id="healthTipHausa" name="hausa_text" rows="2" maxlength="1000"></textarea>'+field("Source name","source_name","text",false,'maxlength="120" value="PHC Link"')+field("Source URL (optional)","source_url","url",false,'maxlength="500"')+'<div class="admin-health-tip-actions"><button class="btn" type="submit">Save health tip</button><button class="btn sec" type="reset">Clear form</button></div></form><div class="admin-health-tip-list">'+(rows||'<p class="sub">No health tips have been saved yet.</p>')+'</div></section></section>';
 }
 function adminWorkspace(data) {
