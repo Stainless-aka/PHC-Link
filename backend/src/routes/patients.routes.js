@@ -113,7 +113,7 @@ router.get('/', async (req, res, next) => {
     if (!facilityId) return res.status(400).json({ error: 'facilityId is required.' });
     if (!(await canAccessFacility(client, req.session.user, facilityId))) return res.status(403).json({ error: 'You cannot access patients at this facility.' });
     const result = await client.query(
-      `SELECT id,patient_code,age_years,sex,created_at,(pin_hash IS NOT NULL) AS has_pin
+      `SELECT id,patient_code,age_years,sex,created_at,(pin_hash IS NULL) AS pin_setup_required
        FROM patients WHERE facility_id=$1 ORDER BY created_at DESC LIMIT 250`,
       [facilityId]
     );
@@ -267,107 +267,6 @@ router.post('/lookup', async (req, res, next) => {
     await client.query('ROLLBACK').catch(() => {});
     next(error);
   } finally { client.release(); }
-});
-
-router.post('/:patientId/initialize-pin', async (req, res, next) => {
-  const client = await pool.connect();
-  try {
-    if (req.session.user.role !== 'health_worker') return res.status(403).json({ error: 'Only the registered PHC worker can initialize a patient PIN.' });
-    await client.query('BEGIN');
-    const existing = await client.query('SELECT id,facility_id,patient_code,full_name,age_years,sex,pin_hash FROM patients WHERE id=$1 FOR UPDATE', [req.params.patientId]);
-    if (!existing.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Patient record not found.' }); }
-    if (!(await canAccessFacility(client, req.session.user, existing.rows[0].facility_id))) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'You cannot initialize this patient record.' }); }
-    if (existing.rows[0].pin_hash) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This patient already has a PIN.' }); }
-    const pin = String(randomInt(1000,10000));
-    const hash = await bcrypt.hash(pin,12);
-    await client.query('UPDATE patients SET pin_hash=$1,pin_failed_attempts=0,pin_locked_until=NULL WHERE id=$2',[hash,req.params.patientId]);
-    await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,\'PATIENT_PIN_INITIALIZED\',\'patient\',$2)',[req.session.user.id,req.params.patientId]);
-    await client.query('COMMIT');
-    const qrCode = await QRCode.toDataURL(existing.rows[0].patient_code,{errorCorrectionLevel:'M',margin:1,width:240});
-    res.json({patient:{id:existing.rows[0].id,patient_code:existing.rows[0].patient_code,full_name:existing.rows[0].full_name,age_years:existing.rows[0].age_years,sex:existing.rows[0].sex},patientPin:pin,qrCode});
-  } catch(error) { await client.query('ROLLBACK').catch(()=>{}); next(error); }
-  finally { client.release(); }
-});
-
-router.post('/:patientId/visits', async (req, res, next) => {
-  const client = await pool.connect();
-  try {
-    if (!['health_worker','clinician'].includes(req.session.user.role)) return res.status(403).json({ error: 'Only PHC workers and clinicians can add patient visits.' });
-    const operationId = req.body.operationId ? String(req.body.operationId) : randomUUID();
-    if (!/^[0-9a-f-]{36}$/i.test(operationId)) return res.status(400).json({ error: 'Invalid operation ID.' });
-    const complaint = String(req.body.complaint || '').trim();
-    const treatment = req.body.treatment ? String(req.body.treatment).trim() : null;
-    const clinicianNote = req.body.clinicianNote ? String(req.body.clinicianNote).trim() : null;
-    const referralStatus = String(req.body.referralStatus || 'not_referred');
-    if (complaint.length < 2 || complaint.length > 1000 || (treatment && treatment.length > 2000) || (clinicianNote && clinicianNote.length > 2000)) return res.status(400).json({ error: 'Enter a valid complaint and keep notes within 2,000 characters.' });
-    if (!['not_referred','referred','accepted','completed'].includes(referralStatus)) return res.status(400).json({ error: 'Select a valid referral status.' });
-    if (clinicianNote && req.session.user.role !== 'clinician') return res.status(403).json({ error: 'Only a clinician can add a clinician note.' });
-    await client.query('BEGIN');
-    if (!(await canAccessPatientNetwork(client, req.session.user, req.params.patientId))) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'You cannot access this patient in your state network.' });
-    }
-    const verified = await verifyPatientPin(client, req.params.patientId, req.body.pin);
-    if (!verified.ok) {
-      await client.query('COMMIT');
-      return res.status(verified.status).json({ error: verified.error });
-    }
-    const assignment = await client.query(
-      `SELECT f.id FROM facility_users fu JOIN facilities f ON f.id=fu.facility_id
-       WHERE fu.user_id=$1 AND fu.is_active=TRUE AND f.is_active=TRUE LIMIT 1`,
-      [req.session.user.id]
-    );
-    if (!assignment.rowCount) {
-      await client.query('ROLLBACK');
-      return res.status(403).json({ error: 'Your account has no active facility assignment.' });
-    }
-    const duplicate = await client.query('SELECT id,complaint,treatment,referral_status,clinician_note,created_at FROM patient_visits WHERE operation_id=$1',[operationId]);
-    if (duplicate.rowCount) { await client.query('COMMIT'); return res.json({ duplicate:true, visit:duplicate.rows[0] }); }
-    const created = await client.query(
-      `INSERT INTO patient_visits(patient_id,facility_id,recorded_by,complaint,treatment,referral_status,clinician_note,operation_id)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,complaint,treatment,referral_status,clinician_note,created_at`,
-      [req.params.patientId,assignment.rows[0].id,req.session.user.id,complaint,treatment,referralStatus,clinicianNote,operationId]
-    );
-    await client.query(
-      `INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata)
-       VALUES($1,'PATIENT_VISIT_ADDED','patient',$2,$3)`,
-      [req.session.user.id,req.params.patientId,JSON.stringify({ visitId:created.rows[0].id, facilityId:assignment.rows[0].id })]
-    );
-    await client.query('COMMIT');
-    res.status(201).json({ visit:created.rows[0] });
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => {});
-    next(error);
-  } finally { client.release(); }
-});
-
-router.patch('/:patientId', async (req, res, next) => {
-  const client = await pool.connect();
-  try {
-    if (!['health_worker','clinician'].includes(req.session.user.role)) return res.status(403).json({ error: 'Only PHC workers and clinicians can edit patient details.' });
-    const details = validatePatient(req.body);
-    await client.query('BEGIN');
-    const existing = await client.query('SELECT id,facility_id FROM patients WHERE id=$1 FOR UPDATE', [req.params.patientId]);
-    if (!existing.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Patient record not found.' }); }
-    if (!(await canAccessPatientNetwork(client, req.session.user, req.params.patientId))) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'You cannot access this patient in your state network.' }); }
-    const verified = await verifyPatientPin(client, req.params.patientId, req.body.pin);
-    if (!verified.ok) { await client.query('COMMIT'); return res.status(verified.status).json({ error: verified.error }); }
-    const updated = await client.query(
-      `UPDATE patients SET full_name=$1,date_of_birth=$2,age_years=$3,sex=$4,phone=$5,next_of_kin_name=$6,
-       next_of_kin_phone=$7,blood_group=$8,known_conditions=$9,allergies=$10
-       WHERE id=$11 RETURNING id,patient_code,age_years,sex,created_at`,
-      [details.fullName,details.dateOfBirth,details.ageYears,details.sex,details.phone,details.nextOfKinName,
-       details.nextOfKinPhone,details.bloodGroup,details.knownConditions,details.allergies,req.params.patientId]
-    );
-    await client.query(
-      `INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata)
-       VALUES($1,'PATIENT_UPDATED','patient',$2,$3)`,
-      [req.session.user.id,req.params.patientId,JSON.stringify({ fields:['full_name','age_years','sex','phone','next_of_kin_name','next_of_kin_phone','blood_group','known_conditions','allergies'] })]
-    );
-    await client.query('COMMIT');
-    res.json({ patient:updated.rows[0] });
-  } catch(error) { await client.query('ROLLBACK').catch(()=>{}); if(error.status)return res.status(error.status).json({error:error.message}); next(error); }
-  finally { client.release(); }
 });
 
 module.exports = router;
