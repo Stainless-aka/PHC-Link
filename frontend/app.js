@@ -690,6 +690,29 @@ document.addEventListener("click",async event=>{
 render();
 window.addEventListener("online",flushOfflineQueue);
 window.addEventListener("offline",updateSyncIndicator);
+let phcInstallPrompt=null;
+const phcInstallButton=document.getElementById("installAppButton");
+const phcIsInstalled=()=>window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+if(phcInstallButton){
+  if(!phcIsInstalled())phcInstallButton.hidden=false;
+  phcInstallButton.addEventListener("click",async()=>{
+    if(phcInstallPrompt){
+      phcInstallPrompt.prompt();
+      const choice=await phcInstallPrompt.userChoice;
+      if(choice?.outcome==="accepted")phcInstallButton.hidden=true;
+      phcInstallPrompt=null;
+      return;
+    }
+    alert(/iphone|ipad|ipod/i.test(navigator.userAgent)
+      ?"To install PHC Link, tap Share in Safari, then choose Add to Home Screen."
+      :"To install PHC Link, open your browser menu and choose Install app or Add to Home screen.");
+  });
+}
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();phcInstallPrompt=event;
+  if(phcInstallButton&&!phcIsInstalled())phcInstallButton.hidden=false;
+});
+window.addEventListener("appinstalled",()=>{if(phcInstallButton)phcInstallButton.hidden=true;phcInstallPrompt=null;});
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
 let phcDeferredInstall=null;
 function phcIsStandalone(){
