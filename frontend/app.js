@@ -28,11 +28,12 @@ function updateSyncIndicator(){
   const count=readOutbox().length;
   node.innerHTML='<span class="sync-dot '+(navigator.onLine?"online":"offline")+'"></span>'+(navigator.onLine?"Online":"Offline")+(count?' · Saved: '+count+' waiting':'');
 }
-function queueOfflineAction(path,payload,error){
+function queueOfflineAction(path,payload,error,method="POST"){
   if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
-  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits")))return false;
+  const isPatientEdit=/^\\/api\\/patients\\/[0-9a-f-]+$/i.test(path);
+  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits"))&&!isPatientEdit)return false;
   const operationId=payload.operationId||crypto.randomUUID();
-  const item={id:operationId,path,method:"POST",payload:{...payload,operationId},createdAt:new Date().toISOString()};
+  const item={id:operationId,path,method:isPatientEdit?"PATCH":method,payload:{...payload,operationId},createdAt:new Date().toISOString()};
   const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);if(!writeOutbox(queue))return false;updateSyncIndicator();return true;
 }
 async function flushOfflineQueue(){
@@ -414,12 +415,17 @@ async function handleSubmit(event) {
     catch(error){if(queueOfflineAction("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}return;
   }
   if(form.id==="patientEditForm"){
-    event.preventDefault();const d=formData(form);
+    event.preventDefault();const d=formData(form),path="/api/patients/"+encodeURIComponent(d.patientId),payload={...d,ageYears:Number(d.ageYears),pin:d.pin,patientCode:STATE.openPatient.patient_code};
     try{
-      await api("/api/patients/"+encodeURIComponent(d.patientId),{method:"PATCH",body:JSON.stringify({...d,ageYears:Number(d.ageYears),pin:d.pin})});
+      await api(path,{method:"PATCH",body:JSON.stringify(payload)});
       const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});
-      STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];notify("Patient details updated.");await facilityWorkspace();
-    }catch(error){notify(error.message,true);}
+      STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];await saveOfflinePatientRecord(result.patient.patient_code,d.pin,{patient:result.patient,visits:result.visits||[]});notify("Patient details updated.");await facilityWorkspace();
+    }catch(error){
+      if(queueOfflineAction(path,payload,error,"PATCH")){
+        const updated={...STATE.openPatient,full_name:d.fullName,age_years:Number(d.ageYears),date_of_birth:d.dateOfBirth||null,sex:d.sex,phone:d.phone||null,next_of_kin_name:d.nextOfKinName||null,next_of_kin_phone:d.nextOfKinPhone||null,blood_group:d.bloodGroup||null,known_conditions:d.knownConditions||null,allergies:d.allergies||null};
+        STATE.openPatient=updated;await saveOfflinePatientRecord(updated.patient_code,d.pin,{patient:updated,visits:STATE.openPatientVisits||[]});notify("Saved Offline — Will Send When Network Comes");await facilityWorkspace();
+      }else notify(error.message,true);
+    }
     return;
   }
   if(form.id==="referralForm"){
