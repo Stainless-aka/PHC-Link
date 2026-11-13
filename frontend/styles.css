@@ -921,3 +921,9 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
   .anc-referral-sheet{width:100%;border:0;border-radius:0;box-shadow:none;padding:12mm}
   .anc-referral-sheet .patient-card-actions{display:none!important}
 }
+
+
+/* Immunization workspace */
+.immunization-card-status{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.immunization-card-status.completed{background:#e8f6ee;color:#176b3a}.immunization-card-status.missed{background:#fff0ed;color:#a52e20}.immunization-card-status.pending{background:#edf3f8;color:#3d5c73}.immunization-card-status.review{background:#fff7df;color:#805b00}
+@media print{body[data-page="immunization"] .hdr,body[data-page="immunization"] .net,body[data-page="immunization"] .patient-card-actions,body[data-page="immunization"] form,body[data-page="immunization"] [data-close-immunization-child]{display:none!important}body[data-page="immunization"] .panel{break-inside:avoid;box-shadow:none}}
+:root[data-theme="dark"] .immunization-card-status.completed{background:#153d2a;color:#a6e6bd}:root[data-theme="dark"] .immunization-card-status.missed{background:#4a211e;color:#ffc0b6}:root[data-theme="dark"] .immunization-card-status.pending{background:#203746;color:#c1d9e8}:root[data-theme="dark"] .immunization-card-status.review{background:#473b1c;color:#f4d78c}
