@@ -54,7 +54,7 @@ router.get('/', async (req, res, next) => {
 
 
 router.get('/clinician/inbox', async (req, res, next) => {
-  if (req.session.user.role !== 'health_worker' || !req.session.user.canRespondEmergency) return res.status(403).json({ error: 'Clinical referral access required.' });
+  if (!(req.session.user.role === 'clinician' || (req.session.user.role === 'health_worker' && req.session.user.canRespondEmergency))) return res.status(403).json({ error: 'Clinical referral access required.' });
   try {
     const result = await pool.query(
       `SELECT r.id,r.referral_code,r.urgency,r.status,r.reason_code,r.created_at,r.updated_at,
@@ -160,7 +160,7 @@ router.patch('/:id/status', async (req, res, next) => {
     const user = req.session.user;
     const allowedFacility = ['acknowledged', 'arrived', 'completed', 'rejected'].includes(status)
       ? referral.destination_facility_id : referral.origin_facility_id;
-    const clinicianEmergencyAction = user.role === 'health_worker' && user.canRespondEmergency && referral.urgency === 'emergency' && ['acknowledged','rejected'].includes(status);
+    const clinicianEmergencyAction = (user.role === 'clinician' || (user.role === 'health_worker' && user.canRespondEmergency)) && referral.urgency === 'emergency' && ['acknowledged','rejected'].includes(status);
     const canUpdate = clinicianEmergencyAction || await canAccessFacility(client, user, allowedFacility) || ['state_admin', 'system_admin'].includes(user.role);
     if (notes !== null && String(notes).length > 500) {
       await client.query('ROLLBACK');
