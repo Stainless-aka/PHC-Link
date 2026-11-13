@@ -190,7 +190,7 @@ async function antenatalWorkspaceMarkup(facility){
       field("Phone number","phone","tel",true,'maxlength="30" autocomplete="tel"')+
       '<label for="address">Residential address</label><textarea id="address" name="address" rows="2" maxlength="500" required></textarea>'+
       field("Next of kin name","nextOfKinName","text",true,'maxlength="160"')+
-      field("Next of kin phone","nextOfKinPhone","tel",true,'maxlength="30"')+
+      field("Next of kin phone (optional)","nextOfKinPhone","tel",false,'maxlength="30"')+
       field("Last menstrual period (LMP)","lmp","date",true,'max="'+new Date().toISOString().slice(0,10)+'"')+
       '<label for="previousPregnancyHistory">Previous pregnancy history</label><textarea id="previousPregnancyHistory" name="previousPregnancyHistory" rows="3" maxlength="3000" placeholder="Gravida/para, previous outcomes, complications or relevant history"></textarea>'+
       '<p class="hint">EDD will be calculated automatically as LMP + 280 days. Confirm dates with the woman and clinical records.</p><button class="btn" type="submit">Register woman and start ANC record</button></form></section>';
@@ -727,6 +727,7 @@ async function handleSubmit(event) {
     try{
       const result=await api(route.path,{method:"POST",body:JSON.stringify(payload)});
       if(form.id==="ancReferralForm"&&result.referral)showAncReferralSheet(result.referral,payload);
+      if(form.id==="ancRegistrationForm"&&result.patientPin&&result.qrCode)showPatientCard({patient:{...(result.pregnancy||{}),sex:"female"},patientPin:result.patientPin,qrCode:result.qrCode});
       notify(form.id==="ancReferralForm"?"Referral created. Review and print the referral form.":"Antenatal record saved.");
       if(form.id==="ancRegistrationForm")STATE.openAncPregnancyId=null;
       await facilityWorkspace();
