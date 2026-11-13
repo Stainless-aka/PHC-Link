@@ -2,7 +2,39 @@
 const PAGE = document.body.dataset.page || "home";
 const WORKSPACE = document.body.dataset.workspace || "login";
 const API_BASE_URL = "";
-const STATE = { page:PAGE, admin:null, user:null, facilityId:null, busy:false };
+const STATE = { page:PAGE, admin:null, user:null, facilityId:null, busy:false, offlineMode:false };
+const OFFLINE_PROFILE_KEY="phclink-offline-profile-v1";
+const OFFLINE_ACCESS_DAYS=7;
+function readOfflineProfile(){try{const value=JSON.parse(localStorage.getItem(OFFLINE_PROFILE_KEY)||"null");return value&&Date.now()<value.expiresAt?value:null;}catch(_){return null;}}
+function bytesToBase64(bytes){return btoa(String.fromCharCode(...bytes));}
+function base64ToBytes(value){return Uint8Array.from(atob(value),char=>char.charCodeAt(0));}
+async function deriveOfflinePin(pin,salt){const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(pin),"PBKDF2",false,["deriveBits"]);return new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},material,256));}
+async function saveOfflineProfile(user,facilities,pin){
+  if(!window.crypto?.subtle)throw new Error("Secure offline PIN storage is not supported by this browser.");
+  const salt=crypto.getRandomValues(new Uint8Array(16)),verifier=await deriveOfflinePin(pin,salt);
+  const profile={user,facilities,salt:bytesToBase64(salt),verifier:bytesToBase64(verifier),createdAt:Date.now(),expiresAt:Date.now()+OFFLINE_ACCESS_DAYS*86400000,failedAttempts:0,lockedUntil:0};
+  localStorage.setItem(OFFLINE_PROFILE_KEY,JSON.stringify(profile));
+  localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user}));
+  localStorage.setItem("phclink-cache:/api/facilities",JSON.stringify({facilities}));
+}
+async function verifyOfflinePin(pin){
+  const profile=readOfflineProfile();if(!profile)throw new Error("Offline access has expired. Connect and sign in again.");
+  if(profile.lockedUntil>Date.now())throw new Error("Offline access is temporarily locked. Try again in 5 minutes.");
+  const attempt=await deriveOfflinePin(pin,base64ToBytes(profile.salt)),expected=base64ToBytes(profile.verifier);
+  const matches=attempt.length===expected.length&&attempt.every((value,index)=>value===expected[index]);
+  if(!matches){profile.failedAttempts=Number(profile.failedAttempts||0)+1;if(profile.failedAttempts>=5){profile.failedAttempts=0;profile.lockedUntil=Date.now()+300000;}localStorage.setItem(OFFLINE_PROFILE_KEY,JSON.stringify(profile));throw new Error(profile.lockedUntil>Date.now()?"Too many incorrect PIN attempts. Try again in 5 minutes.":"Incorrect offline PIN.");}
+  profile.failedAttempts=0;localStorage.setItem(OFFLINE_PROFILE_KEY,JSON.stringify(profile));return profile;
+}
+function offlinePinSetupView(user,facilities){
+  const context=btoa(unescape(encodeURIComponent(JSON.stringify({user,facilities}))));
+  document.getElementById("root").innerHTML='<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">ENABLE OFFLINE ACCESS</div><h2>Create your offline PIN</h2><p class="sub">Choose a 6-digit PIN to unlock this previously authorised device when the network is unavailable. It does not replace your account password.</p><form id="offlinePinSetupForm" class="admin-form"><input type="hidden" name="offlineContext" value="'+context+'"><label for="offlinePin">6-digit PIN</label><input id="offlinePin" name="offlinePin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" required><label for="offlinePinConfirm">Confirm PIN</label><input id="offlinePinConfirm" name="offlinePinConfirm" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="new-password" required><button class="btn" type="submit">Save PIN and continue</button></form><p class="auth-note">Offline access expires after 7 days. Use this only on a trusted device.</p></div></section>';
+}
+function offlineLoginMarkup(){
+  const profile=readOfflineProfile();if(!profile)return "";
+  const name=profile.user?.fullName||profile.user?.full_name||"Registered staff";
+  return '<section class="offline-login-panel"><div class="eyebrow">NO NETWORK? USE OFFLINE ACCESS</div><h3>Welcome back, '+escapeHtml(name)+'</h3><p class="sub">Unlock this device with your 6-digit PIN. Saved information may be out of date.</p><form id="offlineLoginForm" class="admin-form"><label for="offlineLoginPin">Offline PIN</label><input id="offlineLoginPin" name="offlineLoginPin" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" autocomplete="off" required><button class="btn" type="submit">Unlock offline workspace</button></form><small>Offline access expires 7 days after your last online sign-in.</small></section>';
+}
+
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
@@ -116,7 +148,10 @@ async function facilityWorkspace() {
   const root=document.getElementById("root");
   root.innerHTML='<div class="dashboard"><p class="sub">Checking your staff session…</p></div>';
   try {
-    const me=await api("/api/auth/me"); STATE.user=me.user;
+    let me=null;
+    if(navigator.onLine){try{me=await api("/api/auth/me");}catch(error){if(!/Network unavailable/i.test(error.message))throw error;}}
+    if(me){STATE.user=me.user;STATE.offlineMode=false;}
+    else{const profile=readOfflineProfile();if(!profile)throw new Error("No offline access is set up on this device. Sign in online once and create a PIN.");STATE.user=profile.user;STATE.offlineMode=true;}
     if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
     if(STATE.user.role==="clinician"&&STATE.page!=="patients"){window.location.replace("clinician.html");return;}
     if(!["health_worker","clinician","lga_officer"].includes(STATE.user.role)){
@@ -236,7 +271,7 @@ function passwordField(label,name,autocomplete,signup=false) {
   return '<label for="'+name+'">'+label+'</label><div class="password-wrap"><input id="'+name+'" name="'+name+'" type="password" required autocomplete="'+autocomplete+'" '+(signup?'minlength="8" pattern="[A-Za-z0-9]{8,}" title="Use at least 8 letters and numbers only"':'')+'><button class="password-toggle" type="button" data-toggle-password="'+name+'" aria-label="Show password" title="Show password"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>';
 }
 function loginView() {
-  return '<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">SECURE ACCESS</div><h2>Welcome to PHC Link</h2><p class="sub">Sign in with your registered account. Your role determines which workspace opens.</p><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+passwordField("Password","loginPassword","current-password")+'<button class="btn" type="submit">Sign in</button></form><p class="auth-switch">New to PHC Link? <button type="button" data-auth-view="signup">Create an account</button></p><p class="auth-note">New registrations start as health workers. An administrator must assign your facility before you can use the facility workspace.</p></div></section>';
+  return '<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">SECURE ACCESS</div><h2>Welcome to PHC Link</h2><p class="sub">Sign in with your registered account. Your role determines which workspace opens.</p><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+passwordField("Password","loginPassword","current-password")+'<button class="btn" type="submit">Sign in</button></form><p class="auth-switch">New to PHC Link? <button type="button" data-auth-view="signup">Create an account</button></p><p class="auth-note">New registrations start as health workers. An administrator must assign your facility before you can use the facility workspace.</p></div>'+offlineLoginMarkup()+'</section>';
 }
 function signupView() {
   return '<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">CREATE YOUR ACCOUNT</div><h2>Join PHC Link</h2><p class="sub">Register your staff account. Your default role will be Health worker.</p><form id="signupForm" class="admin-form">'+field("Full name","signupFullName","text",true,'autocomplete="name" maxlength="160"')+field("Email address","signupEmail","email",true,'autocomplete="email"')+passwordField("Password (at least 8 letters and numbers)","signupPassword","new-password",true)+passwordField("Confirm password","signupPasswordConfirm","new-password",true)+'<button class="btn" type="submit">Create account</button></form><p class="auth-switch">Already registered? <button type="button" data-auth-view="login">Sign in</button></p><p class="auth-note">Your account is created with the Health worker role. Contact your administrator to change your role or assign a facility.</p></div></section>';
@@ -474,7 +509,8 @@ async function loginPageView() {
       else throw error;
     }
   } catch(error) {
-    root.innerHTML='<section class="panel"><h2>Sign in unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="loginPageView()">Retry</button></section>';
+    root.innerHTML=loginView();
+    if(!navigator.onLine)notify("Offline mode: enter your saved 6-digit PIN.");
   }
 }
 function render() {
@@ -527,8 +563,26 @@ async function handleSubmit(event) {
   if(form.id==="signupForm"){event.preventDefault();const d=formData(form);if(d.signupPassword!==d.signupPasswordConfirm){notify("The passwords do not match.",true);return;}if(!/^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{8,}$/.test(d.signupPassword)){notify("Password must be at least 8 characters and contain letters and numbers only.",true);return;}try{await api("/api/auth/signup",{method:"POST",body:JSON.stringify({fullName:d.signupFullName,email:d.signupEmail,password:d.signupPassword})});notify("Account created. You can now sign in.");rootAuthLogin();}catch(error){notify(error.message,true);}return;}
   if(form.id==="loginForm"){
     event.preventDefault();const d=formData(form);
-    try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;notify("Signed in successfully.");window.location.assign(result.user.role==="system_admin"?"admin.html":(["health_worker","clinician","lga_officer"].includes(result.user.role)?"facility.html":(result.user.role==="system_admin"?"admin.html":"index.html")));}
-    catch(error){notify(error.message,true);}return;
+    try{
+      const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;
+      if(["health_worker","clinician","lga_officer"].includes(result.user.role)){
+        const facilityResult=await api("/api/facilities"),facilities=facilityResult.facilities||[];
+        if(!facilities.length)throw new Error("Your account has no assigned facility. Contact the administrator.");
+        const existing=readOfflineProfile();
+        if(existing){existing.user=result.user;existing.facilities=facilities;existing.expiresAt=Date.now()+OFFLINE_ACCESS_DAYS*86400000;existing.failedAttempts=0;existing.lockedUntil=0;localStorage.setItem(OFFLINE_PROFILE_KEY,JSON.stringify(existing));localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user:result.user}));localStorage.setItem("phclink-cache:/api/facilities",JSON.stringify({facilities}));window.location.assign(result.user.role==="clinician"?"clinician.html":"facility.html");}
+        else offlinePinSetupView(result.user,facilities);
+      }else{notify("Signed in successfully.");window.location.assign("admin.html");}
+    }catch(error){notify(error.message,true);}return;
+  }
+  if(form.id==="offlinePinSetupForm"){
+    event.preventDefault();const d=formData(form);
+    if(!/^[0-9]{6}$/.test(d.offlinePin)){notify("PIN must contain exactly 6 digits.",true);return;}
+    if(d.offlinePin!==d.offlinePinConfirm){notify("The PINs do not match.",true);return;}
+    try{const context=JSON.parse(decodeURIComponent(escape(atob(d.offlineContext))));await saveOfflineProfile(context.user,context.facilities,d.offlinePin);notify("Offline PIN saved on this device.");window.location.assign(context.user.role==="clinician"?"clinician.html":"facility.html");}catch(error){notify(error.message,true);}return;
+  }
+  if(form.id==="offlineLoginForm"){
+    event.preventDefault();const d=formData(form);
+    try{const profile=await verifyOfflinePin(d.offlineLoginPin);STATE.user=profile.user;STATE.facilityId=profile.facilities?.[0]?.id||null;STATE.offlineMode=true;localStorage.setItem("phclink-cache:/api/facilities",JSON.stringify({facilities:profile.facilities||[]}));localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user:profile.user}));window.location.assign(profile.user.role==="clinician"?"clinician.html":"facility.html");}catch(error){notify(error.message,true);}return;
   }
   if(form.id==="stockMovementForm"){
     event.preventDefault();
