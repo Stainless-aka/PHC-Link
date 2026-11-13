@@ -158,7 +158,8 @@ router.post('/', async (req, res, next) => {
     );
     if (duplicate.rowCount) {
       await client.query('COMMIT');
-      return res.json({ duplicate: true, patient: duplicate.rows[0] });
+      const qrCode = await QRCode.toDataURL(duplicate.rows[0].patient_code, { errorCorrectionLevel: 'M', margin: 1, width: 240 });
+      return res.json({ duplicate: true, patient: duplicate.rows[0], patientPin: /^\\d{4}$/.test(String(req.body.patientPin||'')) ? String(req.body.patientPin) : null, qrCode });
     }
     const facility = await client.query(
       `SELECT f.code,s.name AS state_name FROM facilities f
@@ -172,9 +173,9 @@ router.post('/', async (req, res, next) => {
     }
     const count = await client.query('SELECT COUNT(*)::int AS total FROM patients WHERE facility_id=$1', [facilityId]);
     const stateCode = /yobe/i.test(facility.rows[0].state_name) ? 'YB' : facility.rows[0].state_name.split(/\\s+/).map(part => part[0]).join('').slice(0,2).toUpperCase();
-    const facilityCode = String(facility.rows[0].code).replace(/[^A-Za-z0-9-]/g,'').toUpperCase();
+    const facilityCode = String(facility.rows[0].code).replace(/[^A-Za-z0-9-]/g,'').toUpperCase().replace(/^YB-/,'');
     const patientCode = stateCode + '-' + facilityCode + '-' + String(count.rows[0].total + 1).padStart(5,'0');
-    const pin = String(randomInt(1000, 10000));
+    const pin = /^\\d{4}$/.test(String(req.body.patientPin||'')) ? String(req.body.patientPin) : String(randomInt(1000, 10000));
     const pinHash = await bcrypt.hash(pin, 12);
     const created = await client.query(
       `INSERT INTO patients
