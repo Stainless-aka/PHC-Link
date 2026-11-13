@@ -273,6 +273,8 @@ router.post('/:patientId/visits', async (req, res, next) => {
   const client = await pool.connect();
   try {
     if (!['health_worker','clinician'].includes(req.session.user.role)) return res.status(403).json({ error: 'Only PHC workers and clinicians can add patient visits.' });
+    const operationId = req.body.operationId ? String(req.body.operationId) : randomUUID();
+    if (!/^[0-9a-f-]{36}$/i.test(operationId)) return res.status(400).json({ error: 'Invalid operation ID.' });
     const complaint = String(req.body.complaint || '').trim();
     const treatment = req.body.treatment ? String(req.body.treatment).trim() : null;
     const clinicianNote = req.body.clinicianNote ? String(req.body.clinicianNote).trim() : null;
@@ -299,10 +301,12 @@ router.post('/:patientId/visits', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'Your account has no active facility assignment.' });
     }
+    const duplicate = await client.query('SELECT id,complaint,treatment,referral_status,clinician_note,created_at FROM patient_visits WHERE operation_id=$1',[operationId]);
+    if (duplicate.rowCount) { await client.query('COMMIT'); return res.json({ duplicate:true, visit:duplicate.rows[0] }); }
     const created = await client.query(
-      `INSERT INTO patient_visits(patient_id,facility_id,recorded_by,complaint,treatment,referral_status,clinician_note)
-       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,complaint,treatment,referral_status,clinician_note,created_at`,
-      [req.params.patientId,assignment.rows[0].id,req.session.user.id,complaint,treatment,referralStatus,clinicianNote]
+      `INSERT INTO patient_visits(patient_id,facility_id,recorded_by,complaint,treatment,referral_status,clinician_note,operation_id)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,complaint,treatment,referral_status,clinician_note,created_at`,
+      [req.params.patientId,assignment.rows[0].id,req.session.user.id,complaint,treatment,referralStatus,clinicianNote,operationId]
     );
     await client.query(
       `INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata)
