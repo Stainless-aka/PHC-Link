@@ -59,8 +59,13 @@ router.post('/facilities', async (req,res,next) => {
   try {
     const {lgaId}=req.body; const name=String(req.body.name||'').trim(); const code=String(req.body.code||'').trim().toUpperCase();
     const address=req.body.address ? String(req.body.address).trim() : null;
+    const latitude=req.body.latitude===null||req.body.latitude===undefined||req.body.latitude===''?null:Number(req.body.latitude);
+    const longitude=req.body.longitude===null||req.body.longitude===undefined||req.body.longitude===''?null:Number(req.body.longitude);
+    const coordinatesAreApproximate=req.body.coordinatesAreApproximate===true||req.body.coordinatesAreApproximate==='true';
     if(!lgaId||!name||!code) return res.status(400).json({error:'LGA, facility name and unique facility code are required.'});
-    const result=await pool.query('INSERT INTO facilities(lga_id,name,code,address) VALUES($1,$2,$3,$4) RETURNING *',[lgaId,name,code,address]);
+    if((latitude===null)!==(longitude===null))return res.status(400).json({error:'Enter both latitude and longitude, or leave both blank.'});
+    if(latitude!==null&&(!Number.isFinite(latitude)||latitude < -90||latitude > 90||!Number.isFinite(longitude)||longitude < -180||longitude > 180))return res.status(400).json({error:'Enter valid GPS coordinates.'});
+    const result=await pool.query('INSERT INTO facilities(lga_id,name,code,address,latitude,longitude,coordinates_are_approximate) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *',[lgaId,name,code,address,latitude,longitude,latitude===null?false:coordinatesAreApproximate]);
     res.status(201).json({facility:result.rows[0]});
   } catch(error){ if(error.code==='23503') return res.status(404).json({error:'LGA not found.'}); if(error.code==='23505') return res.status(409).json({error:'Facility code already exists.'}); next(error); }
 });
