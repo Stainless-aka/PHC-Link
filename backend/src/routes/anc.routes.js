@@ -1,6 +1,7 @@
 const express = require('express');
 const { randomUUID, randomInt } = require('crypto');
 const bcrypt = require('bcryptjs');
+const QRCode = require('qrcode');
 const pool = require('../config/db');
 const { requireAuth, requireRole } = require('../middleware/require-auth');
 
@@ -72,7 +73,7 @@ router.post('/registrations',async(req,res,next)=>{
     const age=Number(d.ageYears),pregnancyNumber=Number(d.pregnancyNumber),phone=shortText(d.phone,30),address=shortText(d.address,500);
     const kin=shortText(d.nextOfKinName,160),kinPhone=shortText(d.nextOfKinPhone,30);
     const lmp=dateValue(d.lmp,'Last menstrual period');
-    if(!op||fullName.length<2||fullName.length>160||!Number.isInteger(age)||age<10||age>60||!Number.isInteger(pregnancyNumber)||pregnancyNumber<1||pregnancyNumber>20||!phone||!address||!kin||!kinPhone)
+    if(!op||fullName.length<2||fullName.length>160||!Number.isInteger(age)||age<10||age>60||!Number.isInteger(pregnancyNumber)||pregnancyNumber<1||pregnancyNumber>20||!phone||!address||!kin)
       return res.status(400).json({error:'Complete the woman’s name, age, phone, address, next of kin and valid operation ID.'});
     if(!['health_worker','clinician'].includes(req.session.user.role))return res.status(403).json({error:'Only facility clinical staff can register ANC patients.'});
     const today=new Date();today.setHours(0,0,0,0);
@@ -96,7 +97,9 @@ router.post('/registrations',async(req,res,next)=>{
       [patient.rows[0].id,facilityId,pregnancyNumber,lmp,edd.toISOString().slice(0,10),shortText(d.previousPregnancyHistory,3000),req.session.user.id,op]);
     await log(client,req.session.user,'ANC_PREGNANCY_REGISTERED','anc_pregnancy',preg.rows[0].id,{facilityId,patientCode:code});
     await client.query('COMMIT');
-    res.status(201).json({pregnancy:{...preg.rows[0],...patient.rows[0]},patientPin:pin});
+    const pregnancy={...preg.rows[0],...patient.rows[0],phone,address,next_of_kin_name:kin,next_of_kin_phone:kinPhone,sex:'female'};
+    const qrCode=await QRCode.toDataURL(code,{errorCorrectionLevel:'M',margin:1,width:240});
+    res.status(201).json({pregnancy,patientPin:pin,qrCode});
   }catch(e){await client.query('ROLLBACK').catch(()=>{});if(e.code==='23505')return res.status(409).json({error:'This registration has already been saved.'});if(e.status)return res.status(e.status).json({error:e.message});next(e);}
   finally{client.release();}
 });
