@@ -18,7 +18,7 @@ router.get('/', async (req, res, next) => {
       where = `WHERE f.lga_id IN (SELECT lga_id FROM user_lga_access WHERE user_id = $1)`;
     }
     const result = await pool.query(
-      `SELECT f.id, f.name, f.code, f.address, f.latitude, f.longitude,
+      `SELECT f.id, f.name, f.code, f.address, f.latitude, f.longitude, f.coordinates_are_approximate,
               l.name AS lga_name, s.name AS state_name
        FROM facilities f JOIN lgas l ON l.id = f.lga_id
        JOIN states s ON s.id = l.state_id ${where}
