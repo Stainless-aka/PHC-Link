@@ -883,3 +883,6 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .offline-mode-banner{margin:0 0 16px;padding:12px 14px;border:1px solid #c58b24;border-radius:10px;background:#fff5d9;color:#684b12;font-size:13px;font-weight:600}
 :root[data-theme="dark"] .offline-login-panel{background:#172531;border-color:#354957}
 :root[data-theme="dark"] .offline-mode-banner{background:#3b301b;border-color:#8b6b2d;color:#f4d99c}
+
+.offline-data-note{margin:12px 0;padding:12px 14px;border:1px solid #c58b24;border-radius:10px;background:#fff5d9;color:#684b12;font-size:13px;line-height:1.5}
+:root[data-theme="dark"] .offline-data-note{background:#3b301b;border-color:#8b6b2d;color:#f4d99c}
