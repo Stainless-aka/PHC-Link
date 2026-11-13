@@ -69,10 +69,10 @@ router.post('/registrations',async(req,res,next)=>{
   try{
     const d=req.body,facilityId=String(d.facilityId||''),op=operationId(d.operationId);
     const fullName=String(d.fullName||'').trim().replace(/\s+/g,' ');
-    const age=Number(d.ageYears),phone=shortText(d.phone,30),address=shortText(d.address,500);
+    const age=Number(d.ageYears),pregnancyNumber=Number(d.pregnancyNumber),phone=shortText(d.phone,30),address=shortText(d.address,500);
     const kin=shortText(d.nextOfKinName,160),kinPhone=shortText(d.nextOfKinPhone,30);
     const lmp=dateValue(d.lmp,'Last menstrual period');
-    if(!op||fullName.length<2||fullName.length>160||!Number.isInteger(age)||age<10||age>60||!phone||!address||!kin||!kinPhone)
+    if(!op||fullName.length<2||fullName.length>160||!Number.isInteger(age)||age<10||age>60||!Number.isInteger(pregnancyNumber)||pregnancyNumber<1||pregnancyNumber>20||!phone||!address||!kin||!kinPhone)
       return res.status(400).json({error:'Complete the woman’s name, age, phone, address, next of kin and valid operation ID.'});
     if(!['health_worker','clinician'].includes(req.session.user.role))return res.status(403).json({error:'Only facility clinical staff can register ANC patients.'});
     const today=new Date();today.setHours(0,0,0,0);
@@ -90,11 +90,10 @@ router.post('/registrations',async(req,res,next)=>{
     const patient=await client.query(\`INSERT INTO patients(facility_id,patient_code,full_name,age_years,sex,phone,address,next_of_kin_name,next_of_kin_phone,created_by,operation_id,pin_hash)
       VALUES($1,$2,$3,$4,'female',$5,$6,$7,$8,$9,$10,$11) RETURNING id,patient_code,full_name,age_years\`,
       [facilityId,code,fullName,age,phone,address,kin,kinPhone,req.session.user.id,op,hash]);
-    const count=await client.query('SELECT COUNT(*)::int AS n FROM anc_pregnancies WHERE patient_id=$1',[patient.rows[0].id]);
     const edd=new Date(lmp+'T00:00:00Z');edd.setUTCDate(edd.getUTCDate()+280);
     const preg=await client.query(\`INSERT INTO anc_pregnancies(patient_id,facility_id,pregnancy_number,lmp,edd,previous_pregnancy_history,registered_by,operation_id)
       VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,patient_id,pregnancy_number,lmp,edd,status\`,
-      [patient.rows[0].id,facilityId,count.rows[0].n+1,lmp,edd.toISOString().slice(0,10),shortText(d.previousPregnancyHistory,3000),req.session.user.id,op]);
+      [patient.rows[0].id,facilityId,pregnancyNumber,lmp,edd.toISOString().slice(0,10),shortText(d.previousPregnancyHistory,3000),req.session.user.id,op]);
     await log(client,req.session.user,'ANC_PREGNANCY_REGISTERED','anc_pregnancy',preg.rows[0].id,{facilityId,patientCode:code});
     await client.query('COMMIT');
     res.status(201).json({pregnancy:{...preg.rows[0],...patient.rows[0]},patientPin:pin});
@@ -167,6 +166,17 @@ router.post('/:id/medications',(req,res,next)=>createEntry(req,res,next,'anc_med
  const start=dateValue(d.startDate,'Start date'),end=dateValue(d.endDate,'End date',false);if(end&&end<start)throw Object.assign(new Error('End date cannot be before start date.'),{status:400});
  return {columns:['medication_name','dose','frequency','start_date','end_date','instructions','prescribed_by'],values:[name,shortText(d.dose,160),shortText(d.frequency,160),start,end,shortText(d.instructions,1000),u.id]};
 },'ANC_MEDICATION_RECORDED'));
+
+router.patch('/:id/appointments/:appointmentId/status',async(req,res,next)=>{
+ const c=await pool.connect();try{
+  const p=await getPregnancy(c,req.session.user,req.params.id);if(!p)return res.status(404).json({error:'Pregnancy record not found.'});
+  const status=String(req.body.status||'');if(!['completed','cancelled'].includes(status))return res.status(400).json({error:'Select completed or cancelled.'});
+  const r=await c.query('UPDATE anc_appointments SET status=$1 WHERE id=$2 AND pregnancy_id=$3 RETURNING *',[status,req.params.appointmentId,p.id]);
+  if(!r.rowCount)return res.status(404).json({error:'Appointment not found.'});
+  await log(c,req.session.user,'ANC_APPOINTMENT_UPDATED','anc_appointment',r.rows[0].id,{status});res.json({record:r.rows[0]});
+ }catch(e){next(e);}finally{c.release();}
+});
+
 router.post('/:id/appointments',(req,res,next)=>createEntry(req,res,next,'anc_appointments',(d,u)=>{
  return {columns:['appointment_date','purpose','created_by'],values:[dateValue(d.appointmentDate,'Appointment date'),shortText(d.purpose,500),u.id]};
 },'ANC_APPOINTMENT_SCHEDULED'));
