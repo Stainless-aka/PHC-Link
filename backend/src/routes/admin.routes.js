@@ -11,7 +11,7 @@ router.get('/overview', async (req, res, next) => {
     const [states, lgas, facilities, users, items, referrals, referralRecords, patientRecords] = await Promise.all([
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
-      pool.query('SELECT f.id,f.name,f.code,f.lga_id,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
+      pool.query('SELECT f.id,f.name,f.code,f.lga_id,f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
       pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.designation,u.phone,u.is_active,u.can_respond_emergency, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
       pool.query('SELECT id,name,category,unit,default_minimum_stock FROM inventory_items WHERE is_active=TRUE ORDER BY category,name'),
       pool.query('SELECT count(*)::int AS count FROM referrals'),
