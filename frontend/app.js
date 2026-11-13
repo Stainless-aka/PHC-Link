@@ -156,7 +156,7 @@ async function facilityWorkspace() {
     let me=null;
     if(navigator.onLine&&sessionStorage.getItem("phclink-offline-unlocked")!=="1"){try{me=await api("/api/auth/me");}catch(error){if(!/Network unavailable/i.test(error.message))throw error;}}
     if(me){STATE.user=me.user;STATE.offlineMode=false;}
-    else{const profile=readOfflineProfile();if(!profile)throw new Error("No offline access is set up on this device. Sign in online once and create a PIN.");STATE.user=profile.user;STATE.offlineMode=true;}
+    else{if(sessionStorage.getItem("phclink-offline-unlocked")!=="1"){window.location.replace("index.html");return;}const profile=readOfflineProfile();if(!profile)throw new Error("Offline access has expired. Connect and sign in again.");STATE.user=profile.user;STATE.offlineMode=true;}
     if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
     if(STATE.user.role==="clinician"&&STATE.page!=="patients"&&!STATE.offlineMode){window.location.replace("clinician.html");return;}
     if(!["health_worker","clinician","lga_officer"].includes(STATE.user.role)){
