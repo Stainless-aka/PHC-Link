@@ -8,7 +8,7 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
 }
 async function api(path, options={}) {
-  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&["/api/auth/me","/api/facilities","/api/facilities/referral-destinations","/api/inventory/items","/api/inventory/balances","/api/patients","/api/referrals","/api/alerts"].includes(route);
+  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&["/api/auth/me","/api/facilities","/api/facilities/referral-destinations","/api/inventory/items","/api/inventory/balances","/api/patients","/api/referrals","/api/alerts","/api/health-tips","/api/health-assistant/knowledge"].includes(route);
   let response;
   try { response=await fetch(API_BASE_URL+path,{...options,credentials:"include",mode:"cors",headers:{"Content-Type":"application/json",...(options.headers||{})}}); }
   catch(error) {
@@ -106,6 +106,7 @@ function applyFacilityLanguage(){
   const value=el.getAttribute(attr);if(!value)return;const key="en"+attr.replace(/-([a-z])/g,(_,letter)=>letter.toUpperCase());if(!el.dataset[key])el.dataset[key]=value;
   const original=el.dataset[key];el.setAttribute(attr,lang==="ha"?(HAUSA[original]||original):original);
  }));
+ root.querySelectorAll("[data-en][data-ha]").forEach(el=>{el.textContent=lang==="ha"?(el.dataset.ha||el.dataset.en):(el.dataset.en||"");});
  const toggle=root.querySelector("[data-language-switch]");if(toggle)toggle.textContent=lang==="ha"?"Hausa | English":"English | Hausa";
 }
 function facilityLoginView() {
@@ -293,6 +294,45 @@ async function refreshAlertMap(id,title){
     const mapNode=document.getElementById(id),panel=mapNode?.closest(".phc-alert-map-panel");
     if(panel){panel.outerHTML=alertMapPanelMarkup(id,STATE.alertFacilities,title);renderAlertMap(id,STATE.alertFacilities);}
   }catch(_){}
+}
+function healthAssistantMarkup(){
+  const quick=[["bleeding","Bleeding","Zubar jini"],["labour","Labour","Nakuda"],["eclampsia","Eclampsia","Eclampsia"],["gunshot","Gunshot","Harbin bindiga"],["cutlass","Cutlass wound","Raunin adda"],["rta","Road accident","Hadarin mota"],["malaria","Malaria","Zazzabin cizon sauro"],["diarrhoea","Diarrhoea","Gudawa"],["snake bite","Snake bite","Saran maciji"]];
+  return '<section class="panel health-assistant-panel"><div class="panel-head"><div><span class="eyebrow">OFFLINE HEALTH SUPPORT</span><h3>Ask Health Assistant</h3><p>Short protocol-based guidance. Not a doctor or a replacement for a Clinician.</p></div><span class="health-assistant-status">Guidance only</span></div><div class="health-quick-questions">'+quick.map(([value,en,ha])=>'<button class="btn sec sm" type="button" data-health-question="'+value+'" data-en="'+en+'" data-ha="'+ha+'">'+(currentLanguage()==="ha"?ha:en)+'</button>').join("")+'</div><div id="healthAssistantMessages" class="health-assistant-messages" aria-live="polite"><p class="health-assistant-welcome" data-en="I am a Health Assistant, for guidance only. Choose a topic or type a question." data-ha="Ni Mataimakin Lafiya ne don jagora kawai. Zabi batu ko rubuta tambaya.">'+(currentLanguage()==="ha"?"Ni Mataimakin Lafiya ne don jagora kawai. Zabi batu ko rubuta tambaya.":"I am a Health Assistant, for guidance only. Choose a topic or type a question.")+'</p></div><form id="healthAssistantForm" class="health-assistant-form"><input name="question" type="text" maxlength="600" placeholder="'+(currentLanguage()==="ha"?"Rubuta tambayar lafiya...":"Ask a short health question...")+'" required><button class="btn" type="submit">'+(currentLanguage()==="ha"?"Aika":"Ask")+'</button></form></section>';
+}
+function healthTipsTickerMarkup(tips){
+  const rows=(tips||[]).filter(t=>t.is_active!==false);
+  const fallback=[{english_text:"Wash hands with soap and safe water before and after every patient contact.",hausa_text:"Wanke hannu da sabulu da ruwa mai tsafta kafin da bayan kula da mara lafiya."},{english_text:"For diarrhoea, give ORS according to PHC protocol.",hausa_text:"Idan gudawa ta faru, ba da ORS bisa tsarin PHC."}];
+  const items=(rows.length?rows:fallback).map(t=>'<span class="health-tip-item" data-en="'+escapeHtml(t.english_text)+'" data-ha="'+escapeHtml(t.hausa_text||t.english_text)+'">'+escapeHtml(currentLanguage()==="ha"?(t.hausa_text||t.english_text):t.english_text)+'</span>').join('<b aria-hidden="true"> • </b>');
+  return '<section class="health-tips-ticker" aria-label="Health tips ticker"><strong data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</strong><div class="health-ticker-window"><div class="health-ticker-track">'+items+ '<span aria-hidden="true"> • PHC Link • </span>'+items+'</div></div></section>';
+}
+function offlineHealthAnswer(question,language){
+  const knowledge=STATE.healthKnowledge||[],q=String(question||"").toLowerCase();
+  const match=knowledge.find(row=>(row.keywords||[]).some(keyword=>q.includes(String(keyword).toLowerCase())));
+  if(!match)return {answer:(language==="ha"?"Ban tabbata ba. A aika gargadi ga Likita kuma a bi tsarin PHC.":"I am not sure. Send alert to Clinician and follow PHC protocol."),emergency:false};
+  let answer=language==="ha"?match.hausa_answer:match.english_answer;
+  const emergency=/^This is RED|^Wannan JA ne/i.test(answer)||/gunshot|bleeding|eclampsia|snake|rta|cutlass|zubar jini|farfadiya|saran maciji|hadarin mota|harbin bindiga/i.test(q);
+  answer=answer.replace(/^Wannan JA ne\. A aika gargadin JA yanzu kuma a tura mara lafiya\.?\s*/i,"").replace(/^This is RED\. Send RED alert now and refer\.?\s*/i,"").replace(/Ni Mataimakin Lafiya ne, don jagora kawai\./gi,"").replace(/I am a Health Assistant, for guidance only\./gi,"").replace(/This is guidance only\. Follow PHC protocol\. If serious, send RED alert and refer now\./gi,"").trim();
+  const lines=answer.split(/\n+/).map(line=>line.trim()).filter(Boolean);
+  const steps=lines.filter(line=>/^\d+[.)]/.test(line)).slice(0,5);
+  const output=[];if(emergency)output.push("This is RED. Send RED alert now and refer.");output.push("I am a Health Assistant, for guidance only.");output.push(...(steps.length?steps:lines.slice(0,5)));output.push("This is guidance only. Follow PHC protocol. If serious, send RED alert and refer now.");
+  return {answer:output.join("\n"),emergency};
+}
+async function askHealthAssistant(question){
+  const messages=document.getElementById("healthAssistantMessages");if(!messages)return;
+  const clean=String(question||"").trim().slice(0,600);if(!clean)return;
+  messages.insertAdjacentHTML("beforeend",'<div class="health-chat-user">'+escapeHtml(clean)+'</div><div class="health-chat-answer" data-health-loading>Checking saved guidance…</div>');
+  messages.scrollTop=messages.scrollHeight;
+  const loading=messages.querySelector("[data-health-loading]");
+  try{
+    let result;
+    if(navigator.onLine)result=await api("/api/health-assistant",{method:"POST",body:JSON.stringify({question:clean,language:currentLanguage()})});
+    else result=offlineHealthAnswer(clean,currentLanguage());
+    if(loading){loading.removeAttribute("data-health-loading");loading.textContent=result.answer;}
+  }catch(error){
+    const result=offlineHealthAnswer(clean,currentLanguage());
+    if(loading){loading.removeAttribute("data-health-loading");loading.textContent=result.answer;}
+  }
+  messages.scrollTop=messages.scrollHeight;
 }
 function adminIcon(name) {
   const paths = {
