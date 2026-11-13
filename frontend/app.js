@@ -244,6 +244,41 @@ function adminPatientDirectory(data) {
   return '<section id="adminPatients" class="admin-section"><div class="admin-section-heading"><div><span class="eyebrow">PATIENT DIRECTORY</span><h3>Patient registration totals</h3><p>For privacy, administrators can see registration counts only. Patient details require a verified patient PIN.</p></div><span class="admin-section-count">'+total+' total patients</span></div>'+(groups||'<section class="panel admin-panel"><div class="admin-empty"><strong>No patient registrations yet</strong></div></section>')+'</section>';
 }
 
+const ALERT_CODE_LABELS={
+  "MAT-LAB":"Emergency Labour","MAT-BLEED":"Maternal Bleeding","MAT-ECL":"Eclampsia",
+  "EM-GUN":"Gunshot Wound","EM-CUT":"Cutlass Wound","EM-RTA":"Road Traffic Accident",
+  "EM-CLASH":"Community Clash / Violence","BLD-NEED":"Blood Needed","SEC-THREAT":"Security Threat",
+  "DRG-OUT":"Drug Out of Stock","DRG-LOW":"Low Drug Stock","IMM-OUT":"Immunisation Stock Out",
+  "KIT-OUT":"Medical Kit Out of Stock","KIT-LOW":"Low Medical Kit Stock","STAFF-NONE":"No Worker",
+  "PWR-OUT":"Power Outage","MAT-ANC":"Antenatal Care","IMM-DAY":"Immunisation Day"
+};
+function alertColor(severity){return severity==="red"?"#dc2626":severity==="yellow"?"#d69e12":"#16a34a";}
+function alertMapPanelMarkup(id,facilities,title="Yobe PHC Network"){
+  const rows=facilities||[],counts={red:0,yellow:0,green:0};
+  rows.forEach(row=>counts[row.severity||"green"]++);
+  const items=rows.map(row=>{
+    const severity=row.severity||"green",label=row.latest_code?(ALERT_CODE_LABELS[row.latest_code]||"Facility alert"):"Normal operations";
+    const time=row.latest_at?new Date(row.latest_at).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"";
+    const detail=row.latest_details?" · "+escapeHtml(row.latest_details):"";
+    return '<div class="phc-alert-row"><span class="phc-alert-dot" style="background:'+alertColor(severity)+'"></span><div><strong>'+escapeHtml(row.facility_name)+'</strong><small>'+severity.toUpperCase()+' · '+escapeHtml(label)+' · '+escapeHtml(row.lga_name)+detail+'</small></div><time>'+escapeHtml(time)+'</time></div>';
+  }).join("");
+  return '<section class="panel admin-panel phc-alert-map-panel"><div class="panel-head"><div><span class="eyebrow">FACILITY STATUS</span><h3>'+escapeHtml(title)+'</h3><p>Live RED, YELLOW and GREEN status for registered PHCs. Pins marked approximate use town-centre coordinates.</p></div><span class="count-label">'+rows.length+' PHCs</span></div><div class="phc-alert-map-legend"><span><i style="background:#dc2626"></i>RED · Emergency ('+counts.red+')</span><span><i style="background:#d69e12"></i>YELLOW · Warning ('+counts.yellow+')</span><span><i style="background:#16a34a"></i>GREEN · Normal ('+counts.green+')</span></div><div id="'+id+'" class="phc-alert-map" role="img" aria-label="Map of Yobe PHC locations and alert status"></div><div class="phc-alert-list">'+(items||'<p class="empty-state">No PHC facilities are registered in this area yet.</p>')+'</div></section>';
+}
+function renderAlertMap(id,facilities){
+  const node=document.getElementById(id);if(!node)return;
+  if(!window.L){node.innerHTML='<div class="phc-map-fallback">Map tiles are unavailable. Facility status is still listed below.</div>';return;}
+  const map=L.map(node,{scrollWheelZoom:false}).setView([12.15,11.35],8);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:17,attribution:'© OpenStreetMap'}).addTo(map);
+  const points=(facilities||[]).filter(row=>Number.isFinite(Number(row.latitude))&&Number.isFinite(Number(row.longitude)));
+  points.forEach(row=>{
+    const severity=row.severity||"green",color=alertColor(severity),label=row.latest_code?(ALERT_CODE_LABELS[row.latest_code]||"Facility alert"):"Normal operations";
+    const marker=L.circleMarker([Number(row.latitude),Number(row.longitude)],{radius:9,color:"#fff",weight:2,fillColor:color,fillOpacity:1}).addTo(map);
+    marker.bindPopup('<strong>'+escapeHtml(row.facility_name)+'</strong><br>'+severity.toUpperCase()+' · '+escapeHtml(label)+(row.coordinates_are_approximate?'<br><small>Approximate town-centre pin</small>':'')+(row.latest_details?'<br>'+escapeHtml(row.latest_details):''));
+  });
+  if(points.length){const bounds=L.latLngBounds(points.map(row=>[Number(row.latitude),Number(row.longitude)]));map.fitBounds(bounds.pad(.25),{maxZoom:10});}
+  else node.insertAdjacentHTML("beforeend",'<div class="phc-map-fallback">GPS coordinates are not yet available for the registered PHCs. Their status remains listed below.</div>');
+  setTimeout(()=>map.invalidateSize(),80);
+}
 function adminIcon(name) {
   const paths = {
     overview:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9 21v-7h6v7"/>',
