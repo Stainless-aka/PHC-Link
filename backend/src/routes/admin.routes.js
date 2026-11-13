@@ -71,13 +71,14 @@ router.post('/facilities', async (req,res,next) => {
 router.post('/users', async (req,res,next) => {
   try {
     const {fullName,email,password,role,facilityId,lgaId,phone=null,designation=null,canRespondEmergency=false}=req.body;
-    const allowed=['health_worker','lga_officer'];
+    const allowed=['health_worker','clinician','lga_officer'];
     if(!String(fullName||'').trim()||!String(email||'').trim()||!password||password.length<12||!allowed.includes(role))
       return res.status(400).json({error:'Name, email, role and a password of at least 12 characters are required.'});
-    if(role==='health_worker'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
+    if(role==='health_worker'||role==='clinician'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
     if(role==='lga_officer'&&!lgaId) return res.status(400).json({error:'Select an LGA for this officer.'});
     const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho','other'];
     if(designation&&!allowedDesignations.includes(designation)) return res.status(400).json({error:'Select a valid professional designation.'});
+    if(role==='clinician'&&!['doctor','medical_officer','nurse','midwife','chew','cho'].includes(designation)) return res.status(400).json({error:'Clinician accounts require a valid professional designation.'});
     if((canRespondEmergency===true||canRespondEmergency==='true')&&(!designation||role!=='health_worker')) return res.status(400).json({error:'Clinical referral access requires a health worker account and a professional designation.'});
     const client=await pool.connect();
     try{
@@ -87,7 +88,7 @@ router.post('/users', async (req,res,next) => {
         'INSERT INTO users(full_name,email,password_hash,role,phone,designation,can_respond_emergency) VALUES($1,lower($2),$3,$4,$5,$6,$7) RETURNING id,full_name,email,role,phone,designation,can_respond_emergency,is_active',
         [String(fullName).trim(),String(email).trim(),hash,role,phone,designation||null,(canRespondEmergency===true||canRespondEmergency==='true')]
       );
-      if(facilityId&&role==='health_worker')
+      if(facilityId&&(role==='health_worker'||role==='clinician'))
         await client.query('INSERT INTO facility_users(facility_id,user_id) VALUES($1,$2)',[facilityId,created.rows[0].id]);
       if(lgaId&&role==='lga_officer')
         await client.query('INSERT INTO user_lga_access(user_id,lga_id) VALUES($1,$2)',[created.rows[0].id,lgaId]);
@@ -108,7 +109,7 @@ router.post('/users/:userId/facilities', async (req,res,next)=>{
     await client.query('BEGIN');
     const user=await client.query('SELECT id,role FROM users WHERE id=$1 FOR UPDATE',[req.params.userId]);
     if(!user.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
-    if(user.rows[0].role!=='health_worker'){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers.'});}
+    if(!['health_worker','clinician'].includes(user.rows[0].role)){await client.query('ROLLBACK');return res.status(400).json({error:'Facilities can only be assigned to health workers and clinicians.'});}
     const facility=await client.query('SELECT id FROM facilities WHERE id=$1 AND is_active=TRUE',[facilityId]);
     if(!facility.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Active facility not found.'});}
     // A health worker or clinician may have only one active facility at a time.
@@ -125,15 +126,15 @@ router.post('/users/:userId/facilities', async (req,res,next)=>{
 
 router.patch('/users/:userId/role', async (req,res,next)=>{
   if(req.params.userId===req.session.user.id)return res.status(400).json({error:'You cannot change your own administrator role.'});
-  const allowed=['health_worker','lga_officer','state_admin','system_admin'];
+  const allowed=['health_worker','clinician','lga_officer','state_admin','system_admin'];
   const role=String(req.body.role||'');
   if(!allowed.includes(role))return res.status(400).json({error:'Select a valid account role.'});
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
-    const updated=await client.query(`UPDATE users SET role=$1, designation=CASE WHEN $1='health_worker' THEN designation ELSE NULL END, can_respond_emergency=CASE WHEN $1='health_worker' THEN can_respond_emergency ELSE FALSE END, updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active,designation,can_respond_emergency`,[role,req.params.userId]);
+    const updated=await client.query(`UPDATE users SET role=$1, designation=CASE WHEN $1 IN ('health_worker','clinician') THEN designation ELSE NULL END, can_respond_emergency=CASE WHEN $1='health_worker' THEN can_respond_emergency ELSE FALSE END, updated_at=NOW() WHERE id=$2 RETURNING id,full_name,email,role,is_active,designation,can_respond_emergency`,[role,req.params.userId]);
     if(!updated.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'User account not found.'});}
-    if(role==='health_worker') await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
+    if(role==='health_worker'||role==='clinician') await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
     else {
       await client.query('DELETE FROM facility_users WHERE user_id=$1',[req.params.userId]);
       await client.query('DELETE FROM user_lga_access WHERE user_id=$1',[req.params.userId]);
@@ -166,7 +167,7 @@ router.patch('/users/:userId/designation', async (req,res,next)=>{
       `UPDATE users SET designation=$1::text,
          can_respond_emergency=CASE WHEN $1::text IS NULL THEN FALSE ELSE can_respond_emergency END,
          updated_at=NOW()
-       WHERE id=$2 AND role='health_worker'
+       WHERE id=$2 AND role IN ('health_worker','clinician')
        RETURNING id,designation,can_respond_emergency`,
       [designation,req.params.userId]
     );
