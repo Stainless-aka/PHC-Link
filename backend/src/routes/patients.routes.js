@@ -62,7 +62,7 @@ function validatePatient(body) {
   const fullName = String(body.fullName || '').trim().replace(/\s+/g, ' ');
   const ageYears = body.ageYears === '' || body.ageYears === null || body.ageYears === undefined ? null : Number(body.ageYears);
   const dateOfBirth = body.dateOfBirth ? String(body.dateOfBirth) : null;
-  if (dateOfBirth && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth) || Number.isNaN(Date.parse(dateOfBirth)) || new Date(dateOfBirth) > new Date())) throw Object.assign(new Error('Enter a valid date of birth.'), { status: 400 });
+  if (dateOfBirth && (!/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth) || Number.isNaN(Date.parse(dateOfBirth)) || new Date(dateOfBirth) > new Date())) throw Object.assign(new Error('Enter a valid date of birth.'), { status: 400 });
   const sex = body.sex ? String(body.sex) : null;
   const phone = body.phone ? String(body.phone).trim() : null;
   const nextOfKinName = body.nextOfKinName ? String(body.nextOfKinName).trim() : null;
