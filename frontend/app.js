@@ -528,8 +528,13 @@ async function loginPageView() {
       else throw error;
     }
   } catch(error) {
+    // navigator.onLine can remain true when the backend or internet connection is unreachable.
+    // A failed network request must show PIN-only access, never the email/password form.
+    if(!navigator.onLine||/network unavailable|failed to fetch|load failed|networkerror/i.test(error.message||"")){
+      offlineAccessView();
+      return;
+    }
     root.innerHTML=loginView();
-    if(!navigator.onLine)notify("Offline mode: enter your saved 6-digit PIN.");
   }
 }
 function render() {
