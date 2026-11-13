@@ -607,12 +607,35 @@ async function handleSubmit(event) {
   }
   if(form.id==="patientForm"){
     event.preventDefault();
+    // Lock synchronously before the first await so rapid/double taps cannot submit twice.
+    if(form.dataset.submitting==="true")return;
+    form.dataset.submitting="true";
+    const submitButtons=Array.from(form.querySelectorAll('button[type="submit"],button:not([type])'));
+    submitButtons.forEach(button=>{button.disabled=true;button.dataset.originalText=button.textContent;button.textContent="Saving patient…";});
     const d=formData(form);
-    const payload={operationId:crypto.randomUUID(),facilityId:STATE.facilityId,patientPin:String(crypto.getRandomValues(new Uint32Array(1))[0]%9000+1000),fullName:d.patientFullName,ageYears:Number(d.patientAge),sex:d.patientSex,phone:d.patientPhone||null,nextOfKinName:d.nextOfKinName||null,nextOfKinPhone:d.nextOfKinPhone||null,bloodGroup:d.bloodGroup||null,knownConditions:d.knownConditions||null,allergies:d.allergies||null};
+    // Keep the same id and PIN if the user retries after a network failure.
+    const payload={
+      operationId:form.dataset.operationId||(form.dataset.operationId=crypto.randomUUID()),
+      facilityId:STATE.facilityId,
+      patientPin:form.dataset.patientPin||(form.dataset.patientPin=String(crypto.getRandomValues(new Uint32Array(1))[0]%9000+1000)),
+      fullName:d.patientFullName,ageYears:Number(d.patientAge),sex:d.patientSex,
+      phone:d.patientPhone||null,nextOfKinName:d.nextOfKinName||null,nextOfKinPhone:d.nextOfKinPhone||null,
+      bloodGroup:d.bloodGroup||null,knownConditions:d.knownConditions||null,allergies:d.allergies||null
+    };
     try{
       const result=await api("/api/patients",{method:"POST",body:JSON.stringify(payload)});
-      STATE.patientSearchResults=[];STATE.openPatient=null;await facilityWorkspace();showPatientCard(result);
-    }catch(error){if(queueOfflineAction("/api/patients",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}
+      STATE.patientSearchResults=[];STATE.openPatient=null;
+      await facilityWorkspace();showPatientCard(result);
+    }catch(error){
+      if(queueOfflineAction("/api/patients",payload,error)){
+        notify("Saved Offline — Will Send When Network Comes");
+        // Keep the form locked: this registration is already in the pending queue.
+      }else{
+        form.dataset.submitting="false";
+        submitButtons.forEach(button=>{button.disabled=false;button.textContent=button.dataset.originalText||"Register patient and create card";});
+        notify(error.message,true);
+      }
+    }
     return;
   }
   if(form.id==="patientSearchForm"){
