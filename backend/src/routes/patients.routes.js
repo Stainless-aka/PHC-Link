@@ -196,7 +196,7 @@ router.post('/', async (req, res, next) => {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     if (error.code === '23505') return res.status(409).json({ error: 'Patient ID already exists. Please retry registration.' });
-    res.status(error.status || 500);
+    if (error.status) return res.status(error.status).json({ error: error.message });
     next(error);
   } finally { client.release(); }
 });
