@@ -52,6 +52,34 @@ function showPatientCard(result){
   modal.innerHTML='<section class="patient-card-print"><div class="patient-card-brand">PHC LINK · PATIENT CARD</div><h3>'+escapeHtml(patient.full_name||"Patient")+'</h3><h2>'+escapeHtml(patient.patient_code)+'</h2><p>'+escapeHtml(patient.full_name||"Patient")+'</p><p>'+escapeHtml(patient.age_years??"—")+' years · '+escapeHtml(patient.sex||"")+'</p><img class="patient-card-qr" src="'+escapeHtml(result.qrCode||"")+'" alt="Patient QR code"><p class="patient-card-warning">Keep this PIN secret. Do not give it to strangers.</p><div class="patient-card-pin">PIN: <strong>'+escapeHtml(pin)+'</strong></div><div class="patient-card-actions"><button type="button" class="btn sec" data-print-patient-card>Print card</button><button type="button" class="btn" data-close-patient-card>Done</button></div></section>';
   document.body.appendChild(modal);
 }
+async function saveOfflinePatientRecord(patientCode,pin,record){
+  if(!window.crypto?.subtle)return;
+  const encoder=new TextEncoder(),salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const material=await crypto.subtle.importKey("raw",encoder.encode(String(pin)),"PBKDF2",false,["deriveKey"]);
+  const key=await crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:250000,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt"]);
+  const encrypted=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,encoder.encode(JSON.stringify(record)));
+  const encode=bytes=>btoa(String.fromCharCode(...bytes));
+  localStorage.setItem("phclink-patient-cache:"+patientCode,JSON.stringify({salt:encode(salt),iv:encode(iv),data:encode(new Uint8Array(encrypted)),failed:0,lockedUntil:null,updatedAt:new Date().toISOString()}));
+}
+async function readOfflinePatientRecord(patientCode,pin){
+  const keyName="phclink-patient-cache:"+String(patientCode||"").trim().toUpperCase(),stored=localStorage.getItem(keyName);
+  if(!stored)throw new Error("No saved offline record for this Patient ID. Connect to the network and try again.");
+  const cache=JSON.parse(stored);
+  if(cache.lockedUntil&&Date.now()<cache.lockedUntil)throw new Error("Wrong PIN. Access is locked for 5 minutes.");
+  const decode=value=>Uint8Array.from(atob(value),char=>char.charCodeAt(0));
+  try{
+    const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(String(pin)),"PBKDF2",false,["deriveKey"]);
+    const derived=await crypto.subtle.deriveKey({name:"PBKDF2",salt:decode(cache.salt),iterations:250000,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["decrypt"]);
+    const plain=await crypto.subtle.decrypt({name:"AES-GCM",iv:decode(cache.iv)},derived,decode(cache.data));
+    cache.failed=0;cache.lockedUntil=null;localStorage.setItem(keyName,JSON.stringify(cache));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }catch(error){
+    cache.failed=Number(cache.failed||0)+1;
+    if(cache.failed>=3){cache.failed=0;cache.lockedUntil=Date.now()+5*60*1000;}
+    localStorage.setItem(keyName,JSON.stringify(cache));
+    throw new Error(cache.lockedUntil?"Wrong PIN. Access is locked for 5 minutes.":"Wrong PIN.");
+  }
+}
 function stopPatientQrScanner(){if(window.phcQrFrame)cancelAnimationFrame(window.phcQrFrame);window.phcQrFrame=null;if(window.phcQrStream){window.phcQrStream.getTracks().forEach(track=>track.stop());window.phcQrStream=null;}const video=document.getElementById("patientQrVideo");if(video)video.srcObject=null;const panel=document.getElementById("patientQrScanner");if(panel)panel.hidden=true;}
 function notify(message, error=false) {
   const toast=document.getElementById("toast");
@@ -375,19 +403,19 @@ async function handleSubmit(event) {
   }
   if(form.id==="patientLookupForm"){
     event.preventDefault();const d=formData(form);
-    try{const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:d.lookupPatientCode,pin:d.lookupPatientPin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];STATE.openPatientPin=d.lookupPatientPin;await facilityWorkspace();}
-    catch(error){notify(error.message,true);}return;
+    try{const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:d.lookupPatientCode,pin:d.lookupPatientPin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];STATE.openPatientPin=d.lookupPatientPin;await saveOfflinePatientRecord(result.patient.patient_code,d.lookupPatientPin,{patient:result.patient,visits:result.visits||[]});await facilityWorkspace();}
+    catch(error){if(/Network unavailable/i.test(error.message)){try{const cached=await readOfflinePatientRecord(d.lookupPatientCode,d.lookupPatientPin);STATE.openPatient=cached.patient;STATE.openPatientVisits=cached.visits||[];STATE.openPatientPin=d.lookupPatientPin;notify("Offline patient record opened.");await facilityWorkspace();}catch(cacheError){notify(cacheError.message,true);}}else notify(error.message,true);}return;
   }
   if(form.id==="patientEditRecordForm"){
     event.preventDefault();const d=formData(form);
     const payload={pin:d.pin,fullName:d.editFullName,dateOfBirth:d.editDateOfBirth||null,ageYears:d.editAgeYears===""?null:Number(d.editAgeYears),sex:d.editSex||null,phone:d.editPhone||null,nextOfKinName:d.editNextOfKinName||null,nextOfKinPhone:d.editNextOfKinPhone||null,bloodGroup:d.editBloodGroup||null,knownConditions:d.knownConditions||null,allergies:d.allergies||null};
-    try{await api("/api/patients/"+encodeURIComponent(d.patientId),{method:"PATCH",body:JSON.stringify(payload)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];notify("Patient details updated.");await facilityWorkspace();}
+    try{await api("/api/patients/"+encodeURIComponent(d.patientId),{method:"PATCH",body:JSON.stringify(payload)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];await saveOfflinePatientRecord(result.patient.patient_code,d.pin,{patient:result.patient,visits:result.visits||[]});notify("Patient details updated.");await facilityWorkspace();}
     catch(error){notify(error.message,true);}return;
   }
   if(form.id==="patientVisitForm"){
     event.preventDefault();const d=formData(form);
     const payload={...d,operationId:crypto.randomUUID()};
-    try{await api("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",{method:"POST",body:JSON.stringify(payload)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];notify("Visit saved.");await facilityWorkspace();}
+    try{await api("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",{method:"POST",body:JSON.stringify(payload)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];await saveOfflinePatientRecord(result.patient.patient_code,d.pin,{patient:result.patient,visits:result.visits||[]});notify("Visit saved.");await facilityWorkspace();}
     catch(error){if(queueOfflineAction("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}return;
   }
   if(form.id==="patientEditForm"){
