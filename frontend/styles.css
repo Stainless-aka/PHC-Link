@@ -605,7 +605,7 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
  .patient-card-modal{position:static;display:block;padding:0;background:#fff}
  .patient-card-print{width:85mm;box-shadow:none;border:1px solid #ddd;margin:0 auto}
  .patient-card-actions,.patient-card-warning{display:none!important}
- .patient-card-pin strong{visibility:hidden}
+ .patient-card-pin strong{visibility:hidden}.patient-card-pin:after{content:"••••";letter-spacing:3px}
 }
 
 #patientQrScanner{display:grid;gap:10px;max-width:360px;margin:12px 0}#patientQrScanner[hidden]{display:none}#patientQrVideo{width:100%;max-height:280px;object-fit:cover;border-radius:12px;background:#102b40}.patient-edit-details{margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:10px}.patient-edit-details summary{cursor:pointer;font-weight:700;color:var(--ink)}
