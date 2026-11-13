@@ -30,7 +30,7 @@ function updateSyncIndicator(){
 }
 function queueOfflineAction(path,payload,error){
   if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
-  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!/^\\/api\\/patients\\/[^/]+\\/visits$/.test(path))return false;
+  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits")))return false;
   const operationId=payload.operationId||crypto.randomUUID();
   const item={id:operationId,path,method:"POST",payload:{...payload,operationId},createdAt:new Date().toISOString()};
   const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);if(!writeOutbox(queue))return false;updateSyncIndicator();return true;
