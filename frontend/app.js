@@ -882,6 +882,7 @@ async function handleSubmit(event) {
 document.addEventListener("submit",handleSubmit);
 document.addEventListener("change",event=>{if(event.target?.id!=="scheduleId")return;const option=event.target.selectedOptions?.[0],form=event.target.form;if(!option||!form)return;[["vaccineCode",option.dataset.code],["vaccineName",option.dataset.name],["doseNumber",option.dataset.dose],["route",option.dataset.route]].forEach(([name,value])=>{const input=form.elements.namedItem(name);if(input&&value!==undefined)input.value=value;});});
 document.addEventListener("click",async event=>{
+  const deactivateSchedule=event.target.closest("[data-deactivate-immunization-schedule]");if(deactivateSchedule){try{await api("/api/immunization/schedule/"+encodeURIComponent(deactivateSchedule.dataset.deactivateImmunizationSchedule),{method:"PATCH",body:JSON.stringify({isActive:false})});notify("Schedule entry deactivated.");await dashboardView();}catch(error){notify(error.message,true);}return;}
   const openImmun=event.target.closest("[data-open-immunization-child]");
   if(openImmun){STATE.openImmunizationChildId=openImmun.dataset.openImmunizationChild;try{STATE.openImmunizationDetail=await api("/api/immunization/children/"+encodeURIComponent(STATE.openImmunizationChildId));await facilityWorkspace();}catch(error){notify(error.message,true);}return;}
   if(event.target.closest("[data-close-immunization-child]")){STATE.openImmunizationChildId=null;STATE.openImmunizationDetail=null;facilityWorkspace();return;}
