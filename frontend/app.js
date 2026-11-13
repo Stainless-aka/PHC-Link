@@ -884,7 +884,10 @@ document.addEventListener("click",async event=>{
   const openImmun=event.target.closest("[data-open-immunization-child]");
   if(openImmun){STATE.openImmunizationChildId=openImmun.dataset.openImmunizationChild;try{STATE.openImmunizationDetail=await api("/api/immunization/children/"+encodeURIComponent(STATE.openImmunizationChildId));await facilityWorkspace();}catch(error){notify(error.message,true);}return;}
   if(event.target.closest("[data-close-immunization-child]")){STATE.openImmunizationChildId=null;STATE.openImmunizationDetail=null;facilityWorkspace();return;}
-  if(event.target.closest("[data-print-immunization]")){window.print();return;}\n  if(event.target.closest("[data-print-immunization-card]")){if(STATE.openImmunizationDetail)showImmunizationCard(STATE.openImmunizationDetail);return;}\n  if(event.target.closest("[data-print-immunization-slip]")){window.print();return;}\n  if(event.target.closest("[data-close-immunization-slip]")){event.target.closest(".immunization-print-modal")?.remove();return;}
+  if(event.target.closest("[data-print-immunization]")){window.print();return;}
+  if(event.target.closest("[data-print-immunization-card]")){if(STATE.openImmunizationDetail)showImmunizationCard(STATE.openImmunizationDetail);return;}
+  if(event.target.closest("[data-print-immunization-slip]")){window.print();return;}
+  if(event.target.closest("[data-close-immunization-slip]")){event.target.closest(".immunization-print-modal")?.remove();return;}
   if(event.target.closest("[data-print-anc-sheet]")){window.print();return;}
   if(event.target.closest("[data-close-anc-sheet]")){event.target.closest(".anc-referral-modal")?.remove();return;}
   const openAnc=event.target.closest("[data-open-anc]");
