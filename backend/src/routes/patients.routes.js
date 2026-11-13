@@ -61,6 +61,8 @@ async function canAccessPatientNetwork(client, user, patientId) {
 function validatePatient(body) {
   const fullName = String(body.fullName || '').trim().replace(/\s+/g, ' ');
   const ageYears = body.ageYears === '' || body.ageYears === null || body.ageYears === undefined ? null : Number(body.ageYears);
+  const dateOfBirth = body.dateOfBirth ? String(body.dateOfBirth) : null;
+  if (dateOfBirth && (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateOfBirth) || Number.isNaN(Date.parse(dateOfBirth)) || new Date(dateOfBirth) > new Date())) throw Object.assign(new Error('Enter a valid date of birth.'), { status: 400 });
   const sex = body.sex ? String(body.sex) : null;
   const phone = body.phone ? String(body.phone).trim() : null;
   const nextOfKinName = body.nextOfKinName ? String(body.nextOfKinName).trim() : null;
@@ -76,7 +78,7 @@ function validatePatient(body) {
   if (nextOfKinPhone && nextOfKinPhone.length > 30) throw Object.assign(new Error('Next of kin phone is too long.'), { status: 400 });
   if (bloodGroup && !['A+','A-','B+','B-','AB+','AB-','O+','O-','unknown'].includes(bloodGroup)) throw Object.assign(new Error('Select a valid blood group.'), { status: 400 });
   if ([knownConditions, allergies].some(value => value && value.length > 1000)) throw Object.assign(new Error('Medical notes must be 1,000 characters or fewer.'), { status: 400 });
-  return { fullName, ageYears, sex, phone, nextOfKinName, nextOfKinPhone, bloodGroup, knownConditions, allergies };
+  return { fullName, ageYears, dateOfBirth, sex, phone, nextOfKinName, nextOfKinPhone, bloodGroup, knownConditions, allergies };
 }
 
 async function verifyPatientPin(client, patientId, pin) {
@@ -331,10 +333,10 @@ router.patch('/:patientId', async (req, res, next) => {
     const verified = await verifyPatientPin(client, req.params.patientId, req.body.pin);
     if (!verified.ok) { await client.query('COMMIT'); return res.status(verified.status).json({ error: verified.error }); }
     const updated = await client.query(
-      `UPDATE patients SET full_name=$1,age_years=$2,sex=$3,phone=$4,next_of_kin_name=$5,
-       next_of_kin_phone=$6,blood_group=$7,known_conditions=$8,allergies=$9
-       WHERE id=$10 RETURNING id,patient_code,age_years,sex,created_at`,
-      [details.fullName,details.ageYears,details.sex,details.phone,details.nextOfKinName,
+      `UPDATE patients SET full_name=$1,date_of_birth=$2,age_years=$3,sex=$4,phone=$5,next_of_kin_name=$6,
+       next_of_kin_phone=$7,blood_group=$8,known_conditions=$9,allergies=$10
+       WHERE id=$11 RETURNING id,patient_code,age_years,sex,created_at`,
+      [details.fullName,details.dateOfBirth,details.ageYears,details.sex,details.phone,details.nextOfKinName,
        details.nextOfKinPhone,details.bloodGroup,details.knownConditions,details.allergies,req.params.patientId]
     );
     await client.query(
