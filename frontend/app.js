@@ -691,6 +691,43 @@ render();
 window.addEventListener("online",flushOfflineQueue);
 window.addEventListener("offline",updateSyncIndicator);
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
+let phcDeferredInstall=null;
+function phcIsStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+}
+function phcInstallButton(){
+  const header=document.querySelector(".top");
+  if(!header||document.getElementById("phcInstallButton")||phcIsStandalone())return;
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  if(!phcDeferredInstall&&!ios)return;
+  const button=document.createElement("button");
+  button.id="phcInstallButton";
+  button.type="button";
+  button.className="phc-install-button";
+  button.textContent=ios?"Add to Home Screen":"Install App";
+  button.addEventListener("click",async()=>{
+    if(phcDeferredInstall){
+      phcDeferredInstall.prompt();
+      const choice=await phcDeferredInstall.userChoice;
+      if(choice?.outcome==="accepted")button.remove();
+      phcDeferredInstall=null;
+      return;
+    }
+    if(ios)notify('To install PHC Link: tap Share, then "Add to Home Screen".');
+  });
+  header.appendChild(button);
+}
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  phcDeferredInstall=event;
+  phcInstallButton();
+});
+window.addEventListener("appinstalled",()=>{
+  phcDeferredInstall=null;
+  document.getElementById("phcInstallButton")?.remove();
+});
+window.addEventListener("load",phcInstallButton);
+
 
 function initTheme() {
   const stored = localStorage.getItem("phc-link-theme");
