@@ -248,9 +248,9 @@ function adminPatientDirectory(data) {
 }
 
 const ALERT_CODE_LABELS={
-  "MAT-LAB":"Emergency Labour","MAT-BLEED":"Maternal Bleeding","MAT-ECL":"Eclampsia",
-  "EM-GUN":"Gunshot Wound","EM-CUT":"Cutlass Wound","EM-RTA":"Road Traffic Accident",
-  "EM-CLASH":"Community Clash / Violence","BLD-NEED":"Blood Needed","SEC-THREAT":"Security Threat",
+  "MAT-LAB":"Emergency Labour","MAT-BLEED":"Maternal Bleeding Emergency","MAT-ECL":"Eclampsia Emergency",
+  "EM-GUN":"Emergency Gunshot Wound","EM-CUT":"Emergency Cutlass Wound","EM-RTA":"Road Traffic Accident Emergency",
+  "EM-CLASH":"Community Clash / Violence Emergency","BLD-NEED":"Urgent Blood Needed","SEC-THREAT":"Security Threat",
   "DRG-OUT":"Drug Out of Stock","DRG-LOW":"Low Drug Stock","IMM-OUT":"Immunisation Stock Out",
   "KIT-OUT":"Medical Kit Out of Stock","KIT-LOW":"Low Medical Kit Stock","STAFF-NONE":"No Worker",
   "PWR-OUT":"Power Outage","MAT-ANC":"Antenatal Care","IMM-DAY":"Immunisation Day"
