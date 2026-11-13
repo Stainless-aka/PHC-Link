@@ -39,11 +39,12 @@ async function flushOfflineQueue(){
   if(!navigator.onLine||!STATE.user)return;
   const queue=readOutbox();if(!queue.length){updateSyncIndicator();return;}
   const remaining=[];
+  let patientVisitSynced=false;
   for(let i=0;i<queue.length;i++){
-    try{const synced=await api(queue[i].path,{method:queue[i].method,body:JSON.stringify(queue[i].payload)});if(queue[i].path==="/api/patients"&&synced.patientPin&&synced.qrCode)showPatientCard(synced);}
+    try{const synced=await api(queue[i].path,{method:queue[i].method,body:JSON.stringify(queue[i].payload)});if(queue[i].path==="/api/patients"&&synced.patientPin&&synced.qrCode)showPatientCard(synced);if(queue[i].path.startsWith("/api/patients/")&&queue[i].path.endsWith("/visits")){const payload=queue[i].payload;const record=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:payload.patientCode,pin:payload.pin})});await saveOfflinePatientRecord(record.patient.patient_code,payload.pin,{patient:record.patient,visits:record.visits||[]});if(STATE.openPatient?.patient_code===record.patient.patient_code){STATE.openPatient=record.patient;STATE.openPatientVisits=record.visits||[];}patientVisitSynced=true;}}
     catch(error){remaining.push(...queue.slice(i));break;}
   }
-  writeOutbox(remaining);updateSyncIndicator();
+  writeOutbox(remaining);updateSyncIndicator();if(patientVisitSynced&&STATE.page==="patients")facilityWorkspace();
   if(queue.length>remaining.length)notify("Offline actions synchronised successfully.");
 }
 function showPatientCard(result){
@@ -414,7 +415,7 @@ async function handleSubmit(event) {
   }
   if(form.id==="patientVisitForm"){
     event.preventDefault();const d=formData(form);
-    const payload={...d,operationId:crypto.randomUUID()};
+    const payload={...d,patientCode:STATE.openPatient.patient_code,operationId:crypto.randomUUID()};
     try{await api("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",{method:"POST",body:JSON.stringify(payload)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];await saveOfflinePatientRecord(result.patient.patient_code,d.pin,{patient:result.patient,visits:result.visits||[]});notify("Visit saved.");await facilityWorkspace();}
     catch(error){if(queueOfflineAction("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}return;
   }
