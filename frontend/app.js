@@ -690,6 +690,7 @@ async function handleSubmit(event) {
   const form=event.target; if(!(form instanceof HTMLFormElement))return;
   if(form.id==="healthAssistantForm"){event.preventDefault();const d=formData(form);await askHealthAssistant(d.question);form.reset();return;}
   if(form.id==="immunizationScheduleForm"){event.preventDefault();const d=formData(form),payload={...d,doseNumber:Number(d.doseNumber),targetAgeDays:Number(d.targetAgeDays),latestAgeDays:d.latestAgeDays===""?null:Number(d.latestAgeDays)};try{await api("/api/immunization/schedule",{method:"POST",body:JSON.stringify(payload)});notify("National immunization schedule updated.");await dashboardView();}catch(error){notify(error.message,true);}return;}
+  const d=formData(form);
   const immunizationRoutes={
     immunizationChildForm:()=>({path:"/api/immunization/children",payload:{...d,facilityId:STATE.facilityId}}),
     immunizationDoseForm:()=>({path:"/api/immunization/children/"+encodeURIComponent(d.childId)+"/doses",payload:d}),
@@ -699,7 +700,7 @@ async function handleSubmit(event) {
   if(immunizationRoutes[form.id]){
     event.preventDefault();if(form.dataset.submitting==="true")return;form.dataset.submitting="true";
     const buttons=[...form.querySelectorAll('button[type="submit"]')];buttons.forEach(b=>{b.disabled=true;b.dataset.label=b.textContent;b.textContent="Saving…";});
-    const d=formData(form),route=immunizationRoutes[form.id](),payload={...route.payload,operationId:form.dataset.operationId||(form.dataset.operationId=crypto.randomUUID())};
+    const route=immunizationRoutes[form.id](),payload={...route.payload,operationId:form.dataset.operationId||(form.dataset.operationId=crypto.randomUUID())};
     try{const result=await api(route.path,{method:"POST",body:JSON.stringify(payload)});if(form.id==="immunizationChildForm"&&result.patientPin)showImmunizationRegistrationCard(result);if(form.id==="immunizationColdChainForm"&&result.warning)notify(result.warning,true);else notify("Immunization record saved.");if(form.id==="immunizationChildForm")STATE.openImmunizationChildId=null;await facilityWorkspace();}
     catch(error){if(queueOfflineAction(route.path,payload,error)){notify("Saved offline. This immunization record is pending synchronization.");form.reset();delete form.dataset.operationId;form.dataset.submitting="false";buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.label||"Save";});updateSyncIndicator();}else{form.dataset.submitting="false";buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.label||"Save";});notify(error.message,true);}}
     return;
