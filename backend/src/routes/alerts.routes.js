@@ -99,7 +99,7 @@ router.post('/alert', async (req,res,next) => {
        LIMIT 1`,[phcCode]
     );
     if(!facility.rowCount)return res.status(404).json({error:'PHC code was not found in the Yobe facility register.'});
-    if(user&&!gatewayAuthorized&&!(await canReadFacility(client,user,facility.rows[0].id)))return res.status(403).json({error:'You cannot submit alerts for this PHC.'});
+    if(user&&!(await canReadFacility(client,user,facility.rows[0].id)))return res.status(403).json({error:'You cannot submit alerts for this PHC.'});
     const created=await client.query(
       `INSERT INTO facility_alerts(facility_id,phc_code,code,severity,details,source,received_by)
        VALUES($1,$2,$3,$4,$5,$6,$7)
