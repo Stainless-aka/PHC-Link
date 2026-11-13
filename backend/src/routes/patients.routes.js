@@ -30,7 +30,7 @@ async function canAccessFacility(client, user, facilityId) {
 
 async function canAccessPatientNetwork(client, user, patientId) {
   const patient = await client.query(
-    `SELECT s.id AS state_id FROM patients p
+    `SELECT s.id AS state_id,l.id AS lga_id FROM patients p
      JOIN facilities f ON f.id=p.facility_id
      JOIN lgas l ON l.id=f.lga_id
      JOIN states s ON s.id=l.state_id
@@ -50,8 +50,8 @@ async function canAccessPatientNetwork(client, user, patientId) {
   if (user.role === 'lga_officer') {
     const access = await client.query(
       `SELECT 1 FROM user_lga_access a JOIN lgas l ON l.id=a.lga_id
-       WHERE a.user_id=$1 AND l.state_id=$2`,
-      [user.id, patient.rows[0].state_id]
+       WHERE a.user_id=$1 AND a.lga_id=$2`,
+      [user.id, patient.rows[0].lga_id]
     );
     return access.rowCount > 0;
   }
