@@ -628,3 +628,14 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .pwa-install-btn:hover{background:#dceef1}
 .pwa-install-btn[hidden]{display:none!important}
 @media(max-width:480px){.top{gap:8px}.pwa-install-btn{min-height:35px;padding:0 10px;font-size:11px}}
+
+/* Admin health content list */
+.admin-health-tip-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:16px 0;border-top:1px solid var(--line)}
+.admin-health-tip-copy{min-width:0;flex:1;display:grid;gap:6px}
+.admin-health-tip-copy strong{font-weight:650;line-height:1.5;overflow-wrap:anywhere}
+.admin-health-tip-copy small{color:var(--muted);line-height:1.5;overflow-wrap:anywhere}
+.admin-health-tip-copy a{width:max-content;color:var(--teal);font-size:12px;font-weight:650;text-decoration:none}
+.admin-health-tip-copy a:hover{text-decoration:underline}
+.admin-health-tip-actions{display:flex;align-items:center;gap:8px;flex:none}
+.translation-pending{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;background:var(--amber-bg);color:var(--amber);font-size:11px;font-weight:700}
+@media(max-width:640px){.admin-health-tip-row{flex-direction:column;gap:10px}.admin-health-tip-actions{width:100%;justify-content:flex-start}}
