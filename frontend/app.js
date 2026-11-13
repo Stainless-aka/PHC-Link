@@ -507,8 +507,10 @@ async function dashboardView() {
 }
 function offlineAccessView(){
   const root=document.getElementById("root");
-  const profile=readOfflineProfile();
-  root.innerHTML='<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">PHC LINK · OFFLINE ACCESS</div><h2>Sign in with your offline PIN</h2>'+(profile?offlineLoginMarkup():'<p class="sub">No offline access is set up on this device. Connect to the internet and sign in once to create your 6-digit PIN.</p>')+'</div></section>';
+  if(!root)return;
+  root.innerHTML='<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">PHC LINK · OFFLINE ACCESS</div><h2>Sign in with your offline PIN</h2>'+offlineLoginMarkup()+'</div></section>';
+  const pin=root.querySelector("#offlineLoginPin");
+  if(pin)pin.focus();
 }
 async function loginPageView() {
   const root=document.getElementById("root");
