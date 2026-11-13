@@ -41,6 +41,11 @@ function escapeHtml(value) {
 }
 async function api(path, options={}) {
   const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&["/api/auth/me","/api/facilities","/api/facilities/referral-destinations","/api/inventory/items","/api/inventory/balances","/api/patients","/api/referrals","/api/alerts","/api/health-tips","/api/health-assistant/knowledge"].includes(route);
+  if(STATE.offlineMode){
+    if(method!=="GET")throw new Error("Network unavailable. Your action can be saved offline.");
+    if(cacheable){try{const cached=localStorage.getItem(cacheKey);if(cached)return JSON.parse(cached);}catch(_){}}
+    throw new Error("This information has not been saved on this device yet. Connect to the network and try again.");
+  }
   let response;
   try { response=await fetch(API_BASE_URL+path,{...options,credentials:"include",mode:"cors",headers:{"Content-Type":"application/json",...(options.headers||{})}}); }
   catch(error) {
@@ -212,6 +217,7 @@ async function facilityWorkspace() {
       '<section class="facility-data-card facility-stock-summary"><div class="facility-card-head"><div><span class="facility-kicker">INVENTORY SNAPSHOT</span><h3>Available stock</h3></div><a href="stock.html">Manage stock '+icon("arrow")+'</a></div>'+
       (stockRows.length?'<div class="facility-stock-list">'+stockRows.slice(0,6).map(item=>'<div><span>'+escapeHtml(item.name)+'</span><strong>'+escapeHtml(item.quantity)+' <small>'+escapeHtml(item.unit)+'</small></strong></div>').join("")+'</div>':'<div class="facility-empty compact"><strong>No stock balances recorded</strong><p>Stock balances will appear after movements are recorded.</p><a href="stock.html">Open stock management</a></div>')+'</section></div>'+(STATE.user.role==="health_worker"?healthAssistantMarkup()+healthTipsTickerMarkup(STATE.healthTips||[]):"")+(STATE.user.role==="lga_officer"?alertMapPanelMarkup("lgaAlertMap",STATE.alertFacilities,"LGA PHC Alert Map"):"");
     }
+    if(STATE.offlineMode)content='<div class="offline-mode-banner">Offline access · Showing saved data. New records remain pending until you reconnect.</div>'+content;
     content+='</section>';
     const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"]]:(STATE.user.role==="lga_officer"?[["home","LGA overview","facility.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]]);
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+((STATE.user.role==="clinician"||STATE.user.canRespondEmergency)?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div><div id="patientEditor" class="patient-editor" hidden><section class="patient-editor-card" role="dialog" aria-modal="true" aria-labelledby="patientEditorTitle"><div class="panel-head"><div><h3 id="patientEditorTitle">Edit patient details</h3><p>Update the selected patient record.</p></div><button class="btn sec sm" type="button" data-close-patient-editor>Close</button></div><form id="patientEditForm" class="admin-form"><input type="hidden" name="patientId" id="editPatientId">'+field("Patient full name","editPatientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","editPatientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","editPatientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","editPatientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<div class="patient-editor-actions"><button class="btn sec" type="button" data-close-patient-editor>Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>';
@@ -767,7 +773,17 @@ document.addEventListener("click",async event=>{
   }
 });
 render();
-window.addEventListener("online",flushOfflineQueue);
+window.addEventListener("online",async()=>{
+  updateSyncIndicator();
+  try{
+    const response=await fetch("/api/auth/me",{credentials:"include"});
+    if(!response.ok){notify("Reconnect with your account password before pending records can sync.",true);return;}
+    const data=await response.json();STATE.user=data.user;STATE.offlineMode=false;sessionStorage.removeItem("phclink-offline-unlocked");
+    localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user:data.user}));
+    await flushOfflineQueue();
+    if(WORKSPACE==="facility")facilityWorkspace();
+  }catch(_){}
+});
 window.addEventListener("offline",updateSyncIndicator);
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
 let phcDeferredInstall=null;
