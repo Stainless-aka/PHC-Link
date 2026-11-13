@@ -13,7 +13,7 @@ function decodeXml(value){
   return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/\s+/g,' ').trim();
 }
 function emergencyQuestion(question){
-  return /gunshot|bullet|heavy bleeding|bleeding after birth|haemorrhage|hemorrhage|eclampsia|convulsion|seizure|unconscious|not breathing|snake ?bite|road traffic|rta|serious accident|cutlass wound/i.test(question);
+  return /gunshot|bullet|heavy bleeding|bleeding after birth|haemorrhage|hemorrhage|eclampsia|convulsion|seizure|unconscious|not breathing|snake ?bite|road traffic|rta|serious accident|cutlass wound|zubar jini|farfadiya|saran maciji|hadarin mota|harbin bindiga|raunin adda|nakuda/i.test(question);
 }
 function sanitizeAnswer(raw,question,language='en'){
   let text=String(raw||'').replace(/I am a Health Assistant, for guidance only\./gi,'').replace(/Ni Mataimakin Lafiya ne, don jagora kawai\./gi,'').replace(/This is guidance only\. Follow PHC protocol\. If serious, send RED alert and refer now\./gi,'').replace(/^This is RED\. Send RED alert now and refer\.?\s*/i,'').trim();
@@ -28,7 +28,7 @@ function sanitizeAnswer(raw,question,language='en'){
   if(numbered.length)lines=numbered.slice(0,5);
   else lines=lines.join(' ').split(/(?<=[.!?])\s+/).filter(Boolean).slice(0,5);
   if(!lines.length)lines=[language==='ha'?'Ban tabbata ba. A aika gargadi ga Likita kuma a bi tsarin PHC.':'I am not sure. Send alert to Clinician and follow PHC protocol.'];
-  const isEmergency=emergencyQuestion(question)||/^This is RED/i.test(String(raw||''));
+  const isEmergency=emergencyQuestion(question)||/^This is RED|^Wannan JA ne/i.test(String(raw||''));
   const output=[];
   if(isEmergency)output.push(RED_LINE);
   output.push(IDENTITY_LINE);
