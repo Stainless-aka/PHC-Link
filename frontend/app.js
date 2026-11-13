@@ -149,11 +149,11 @@ async function facilityWorkspace() {
   root.innerHTML='<div class="dashboard"><p class="sub">Checking your staff session…</p></div>';
   try {
     let me=null;
-    if(navigator.onLine){try{me=await api("/api/auth/me");}catch(error){if(!/Network unavailable/i.test(error.message))throw error;}}
+    if(navigator.onLine&&sessionStorage.getItem("phclink-offline-unlocked")!=="1"){try{me=await api("/api/auth/me");}catch(error){if(!/Network unavailable/i.test(error.message))throw error;}}
     if(me){STATE.user=me.user;STATE.offlineMode=false;}
     else{const profile=readOfflineProfile();if(!profile)throw new Error("No offline access is set up on this device. Sign in online once and create a PIN.");STATE.user=profile.user;STATE.offlineMode=true;}
     if(STATE.user.role==="system_admin"){ window.location.replace("admin.html"); return; }
-    if(STATE.user.role==="clinician"&&STATE.page!=="patients"){window.location.replace("clinician.html");return;}
+    if(STATE.user.role==="clinician"&&STATE.page!=="patients"&&!STATE.offlineMode){window.location.replace("clinician.html");return;}
     if(!["health_worker","clinician","lga_officer"].includes(STATE.user.role)){
       root.innerHTML='<section class="panel setup-panel"><h2>Workspace not available</h2><p class="sub">Your account role does not have access to the facility workspace. Contact the system administrator.</p><button class="btn sec" id="staffLogout" type="button">Sign out</button></section>'; return;
     }
@@ -564,7 +564,7 @@ async function handleSubmit(event) {
   if(form.id==="loginForm"){
     event.preventDefault();const d=formData(form);
     try{
-      const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;
+      const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:d.loginEmail,password:d.loginPassword})});STATE.user=result.user;sessionStorage.removeItem("phclink-offline-unlocked");
       if(["health_worker","clinician","lga_officer"].includes(result.user.role)){
         const facilityResult=await api("/api/facilities"),facilities=facilityResult.facilities||[];
         if(!facilities.length)throw new Error("Your account has no assigned facility. Contact the administrator.");
@@ -582,7 +582,7 @@ async function handleSubmit(event) {
   }
   if(form.id==="offlineLoginForm"){
     event.preventDefault();const d=formData(form);
-    try{const profile=await verifyOfflinePin(d.offlineLoginPin);STATE.user=profile.user;STATE.facilityId=profile.facilities?.[0]?.id||null;STATE.offlineMode=true;localStorage.setItem("phclink-cache:/api/facilities",JSON.stringify({facilities:profile.facilities||[]}));localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user:profile.user}));window.location.assign(profile.user.role==="clinician"?"clinician.html":"facility.html");}catch(error){notify(error.message,true);}return;
+    try{const profile=await verifyOfflinePin(d.offlineLoginPin);STATE.user=profile.user;STATE.facilityId=profile.facilities?.[0]?.id||null;STATE.offlineMode=true;sessionStorage.setItem("phclink-offline-unlocked","1");localStorage.setItem("phclink-cache:/api/facilities",JSON.stringify({facilities:profile.facilities||[]}));localStorage.setItem("phclink-cache:/api/auth/me",JSON.stringify({user:profile.user}));window.location.assign(profile.user.role==="clinician"?"clinician.html":"facility.html");}catch(error){notify(error.message,true);}return;
   }
   if(form.id==="stockMovementForm"){
     event.preventDefault();
@@ -763,7 +763,7 @@ document.addEventListener("click",async event=>{
     return;
   }
   if(event.target.closest("#logoutButton")||event.target.closest("[data-admin-logout]")||event.target.closest("#staffLogout")||event.target.closest("#clinicianLogout")){
-    try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:")).forEach(key=>localStorage.removeItem(key));STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
+    try{await api("/api/auth/logout",{method:"POST"});}catch(_){}finally{sessionStorage.removeItem("phclink-offline-unlocked");Object.keys(localStorage).filter(key=>key.startsWith("phclink-cache:")).forEach(key=>localStorage.removeItem(key));STATE.user=null;STATE.facilityId=null;notify("Signed out. Pending offline actions remain saved on this device.");window.location.assign("index.html");}
   }
 });
 render();
