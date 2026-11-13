@@ -76,7 +76,7 @@ router.post('/users', async (req,res,next) => {
       return res.status(400).json({error:'Name, email, role and a password of at least 12 characters are required.'});
     if(role==='health_worker'||role==='clinician'){ if(!facilityId) return res.status(400).json({error:'Select a facility for this user.'}); }
     if(role==='lga_officer'&&!lgaId) return res.status(400).json({error:'Select an LGA for this officer.'});
-    const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho','other'];
+    const allowedDesignations=['doctor','medical_officer','nurse','midwife','chew','cho'];
     if(designation&&!allowedDesignations.includes(designation)) return res.status(400).json({error:'Select a valid professional designation.'});
     if(role==='clinician'&&!['doctor','medical_officer','nurse','midwife','chew','cho'].includes(designation)) return res.status(400).json({error:'Clinician accounts require a valid professional designation.'});
     if((canRespondEmergency===true||canRespondEmergency==='true')&&(!designation||role!=='health_worker')) return res.status(400).json({error:'Clinical referral access requires a health worker account and a professional designation.'});
@@ -159,7 +159,7 @@ router.post('/inventory-items', async(req,res,next)=>{
 });
 
 router.patch('/users/:userId/designation', async (req,res,next)=>{
-  const allowed=['doctor','medical_officer','nurse','midwife','chew','cho','other',null,''];
+  const allowed=['doctor','medical_officer','nurse','midwife','chew','cho' ,null,''];
   const designation=req.body.designation||null;
   if(!allowed.includes(designation))return res.status(400).json({error:'Select a valid professional designation.'});
   try{
