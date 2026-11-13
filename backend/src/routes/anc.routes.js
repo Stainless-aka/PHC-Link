@@ -7,6 +7,7 @@ const { requireAuth, requireRole } = require('../middleware/require-auth');
 const router = express.Router();
 router.use(requireAuth, requireRole('health_worker', 'clinician'));
 
+function canViewSensitiveTests(user){return ['doctor','medical_officer','nurse','midwife'].includes(user.designation);}
 async function canAccessFacility(client,user,facilityId){
   const r=await client.query(
     \`SELECT 1 FROM facility_users fu JOIN facilities f ON f.id=fu.facility_id
@@ -108,7 +109,7 @@ router.get('/:id',async(req,res,next)=>{
     if(!p)return res.status(404).json({error:'Pregnancy record not found or access denied.'});
     const [visits,tests,risks,medications,appointments,delivery,postnatal]=await Promise.all([
       client.query('SELECT * FROM anc_visits WHERE pregnancy_id=$1 ORDER BY visit_date DESC,created_at DESC',[p.id]),
-      client.query('SELECT * FROM anc_lab_results WHERE pregnancy_id=$1 ORDER BY tested_at DESC,created_at DESC',[p.id]),
+      client.query(canViewSensitiveTests(req.session.user)?'SELECT * FROM anc_lab_results WHERE pregnancy_id=$1 ORDER BY tested_at DESC,created_at DESC':'SELECT * FROM anc_lab_results WHERE pregnancy_id=$1 AND test_type NOT IN (\'hiv\',\'hepatitis_b\') ORDER BY tested_at DESC,created_at DESC',[p.id]),
       client.query('SELECT * FROM anc_risk_flags WHERE pregnancy_id=$1 ORDER BY created_at DESC',[p.id]),
       client.query('SELECT * FROM anc_medications WHERE pregnancy_id=$1 ORDER BY start_date DESC',[p.id]),
       client.query('SELECT * FROM anc_appointments WHERE pregnancy_id=$1 ORDER BY appointment_date',[p.id]),
@@ -143,6 +144,7 @@ router.post('/:id/visits',(req,res,next)=>createEntry(req,res,next,'anc_visits',
 router.post('/:id/tests',(req,res,next)=>createEntry(req,res,next,'anc_lab_results',(d,u)=>{
  const type=String(d.testType||'');const allowed=['blood_group','genotype','hiv','hepatitis_b','malaria','urine','blood_sugar','haemoglobin','other'];
  if(!allowed.includes(type))throw Object.assign(new Error('Select a valid test.'),{status:400});
+ if(['hiv','hepatitis_b'].includes(type)&&!canViewSensitiveTests(u))throw Object.assign(new Error('Only authorised clinical designations may record confidential HIV or hepatitis B results.'),{status:403});
  const consent=d.consentObtained===true||d.consentObtained==='true';
  if(['hiv','hepatitis_b'].includes(type)&&!consent)throw Object.assign(new Error('Documented consent is required before recording this screening.'),{status:400});
  return {columns:['test_type','result','tested_at','consent_obtained','confidential','notes','recorded_by'],values:[type,shortText(d.result,1000)||'Not recorded',dateValue(d.testedAt,'Test date'),consent,true,shortText(d.notes,1000),u.id]};
