@@ -941,3 +941,10 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
  .immunization-print-card{width:100%;max-width:none;border-radius:0;box-shadow:none;padding:20px}
  .immunization-print-card .patient-card-actions{display:none!important}
 }
+
+
+.workspace-section-heading{display:flex;align-items:center;gap:14px;padding:2px 0 4px}
+.workspace-section-heading h2{margin:0 0 5px}
+.workspace-section-heading .sub{margin:0}
+.workspace-section-icon{width:42px;height:42px;flex:0 0 42px;padding:9px;border-radius:13px;background:var(--soft,#eaf3f6);color:var(--primary,#116b86);fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+:root[data-theme="dark"] .workspace-section-icon{background:#193744;color:#8bd2e2}
