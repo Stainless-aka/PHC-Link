@@ -908,3 +908,16 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
   .panel{break-inside:avoid;border:1px solid #bbb!important;box-shadow:none!important}
   .anc-record{break-inside:avoid}
 }
+
+.anc-referral-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px;background:#071521b8;overflow:auto}
+.anc-referral-sheet{width:min(720px,100%);padding:28px;background:#fff;color:#192d3b;border-radius:10px;box-shadow:0 20px 70px #0004}
+.anc-referral-sheet h2,.anc-referral-sheet h3{color:#192d3b}
+.anc-referral-sheet p{font-size:12px;margin:8px 0}
+.anc-signatures{display:grid;gap:18px;margin:28px 0}
+@media print{
+  body:has(.anc-referral-modal) *{visibility:hidden!important}
+  .anc-referral-modal,.anc-referral-modal *{visibility:visible!important}
+  .anc-referral-modal{position:absolute;inset:0;display:block;padding:0;background:#fff}
+  .anc-referral-sheet{width:100%;border:0;border-radius:0;box-shadow:none;padding:12mm}
+  .anc-referral-sheet .patient-card-actions{display:none!important}
+}
