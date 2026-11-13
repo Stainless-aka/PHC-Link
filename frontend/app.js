@@ -424,6 +424,8 @@ async function handleSubmit(event) {
 }
 document.addEventListener("submit",handleSubmit);
 document.addEventListener("click",event=>{
+  if(event.target.closest("[data-close-patient-card]")){event.target.closest(".patient-card-modal")?.remove();return;}
+  if(event.target.closest("[data-print-patient-card]")){window.print();return;}
   const lookupCode=event.target.closest("[data-lookup-code]");
   if(lookupCode){const input=document.getElementById("lookupPatientCode");if(input){input.value=lookupCode.dataset.lookupCode;input.focus();}return;}
   if(event.target.closest("[data-close-patient-record]")){STATE.openPatient=null;STATE.openPatientVisits=[];STATE.openPatientPin=null;facilityWorkspace();return;}
