@@ -73,6 +73,7 @@ function updateSyncIndicator(){
   node.innerHTML='<span class="sync-dot '+(navigator.onLine?"online":"offline")+'"></span>'+(navigator.onLine?"Online":"Offline")+(count?' · Saved: '+count+' waiting':'');
 }
 function queueOfflineAction(path,payload,error,method="POST"){
+  if(path==="/api/immunization/lots")return false;
   if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
   const isPatientEdit=path.startsWith("/api/patients/")&&!path.endsWith("/visits")&&path.split("/").length===4;
   if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits"))&&!isPatientEdit&&!path.startsWith("/api/anc/")&&!path.startsWith("/api/immunization/"))return false;
