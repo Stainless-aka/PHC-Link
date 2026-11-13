@@ -252,7 +252,7 @@ router.post('/:patientId/initialize-pin', async (req, res, next) => {
   try {
     if (req.session.user.role !== 'health_worker') return res.status(403).json({ error: 'Only the registered PHC worker can initialize a patient PIN.' });
     await client.query('BEGIN');
-    const existing = await client.query('SELECT id,facility_id,patient_code,pin_hash FROM patients WHERE id=$1 FOR UPDATE', [req.params.patientId]);
+    const existing = await client.query('SELECT id,facility_id,patient_code,full_name,age_years,sex,pin_hash FROM patients WHERE id=$1 FOR UPDATE', [req.params.patientId]);
     if (!existing.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Patient record not found.' }); }
     const verified = await verifyPatientPin(client, patientId, pin);
     if (!verified.ok) { await client.query('COMMIT'); return res.status(verified.status).json({ error: verified.error }); }
@@ -264,7 +264,7 @@ router.post('/:patientId/initialize-pin', async (req, res, next) => {
     await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,\'PATIENT_PIN_INITIALIZED\',\'patient\',$2)',[req.session.user.id,req.params.patientId]);
     await client.query('COMMIT');
     const qrCode = await QRCode.toDataURL(existing.rows[0].patient_code,{errorCorrectionLevel:'M',margin:1,width:240});
-    res.json({patient:{id:existing.rows[0].id,patient_code:existing.rows[0].patient_code},patientPin:pin,qrCode});
+    res.json({patient:{id:existing.rows[0].id,patient_code:existing.rows[0].patient_code,full_name:existing.rows[0].full_name,age_years:existing.rows[0].age_years,sex:existing.rows[0].sex},patientPin:pin,qrCode});
   } catch(error) { await client.query('ROLLBACK').catch(()=>{}); next(error); }
   finally { client.release(); }
 });
