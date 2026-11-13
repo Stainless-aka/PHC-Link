@@ -886,3 +886,25 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 
 .offline-data-note{margin:12px 0;padding:12px 14px;border:1px solid #c58b24;border-radius:10px;background:#fff5d9;color:#684b12;font-size:13px;line-height:1.5}
 :root[data-theme="dark"] .offline-data-note{background:#3b301b;border-color:#8b6b2d;color:#f4d99c}
+
+
+/* Maternity and antenatal care */
+.anc-education-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.anc-education-grid article{padding:14px;border:1px solid var(--line);border-radius:7px;background:var(--white)}
+.anc-education-grid article b{display:block;color:var(--ink);font-size:12px}
+.anc-education-grid article p{margin:6px 0 0;color:var(--muted);font-size:11px}
+.anc-record .stats{grid-template-columns:repeat(auto-fit,minmax(125px,1fr))}
+.anc-record .stat b{font-size:18px}
+.admin-form input[type=checkbox]{width:auto;min-height:0;margin:0 7px 0 0;vertical-align:middle;accent-color:var(--teal)}
+.admin-form label:has(input[type=checkbox]){display:flex;align-items:center;gap:5px;color:var(--ink);font-weight:600}
+@media(max-width:720px){.anc-education-grid{grid-template-columns:1fr}.anc-record .stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media print{
+  body{background:#fff!important;color:#111!important}
+  .top,.tabs,.net,.facility-header-actions,.btn,.admin-form,.toast{display:none!important}
+  main#root{max-width:none;padding:0}
+  .screen-wrap{display:block;border:0;box-shadow:none;min-height:0}
+  .hdr{display:none!important}
+  .body{padding:0;background:#fff}
+  .panel{break-inside:avoid;border:1px solid #bbb!important;box-shadow:none!important}
+  .anc-record{break-inside:avoid}
+}
