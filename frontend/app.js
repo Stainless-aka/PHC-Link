@@ -272,12 +272,12 @@ function alertFacilityDisplayCode(row){
   return code.startsWith("YB-")?code:"YB-"+code;
 }
 function alertTimeLabel(value){
-  if(!value)return "Time unavailable";
+  if(!value)return "No recent alert";
   const date=new Date(value);
   return Number.isNaN(date.getTime())?"Time unavailable":date.toLocaleTimeString("en-NG",{hour:"2-digit",minute:"2-digit",hour12:true});
 }
 function alertMapPanelMarkup(id,facilities,title="Yobe PHC Network"){
-  const rows=facilities||[],counts={red:0,yellow:0,green:0};
+  const rows=[...(facilities||[])].sort((a,b)=>({red:0,yellow:1,green:2}[a.severity]??2)-({red:0,yellow:1,green:2}[b.severity]??2)||new Date(b.latest_at||0)-new Date(a.latest_at||0)),counts={red:0,yellow:0,green:0};
   rows.forEach(row=>{const level=["red","yellow","green"].includes(row.severity)?row.severity:"green";counts[level]++;});
   const items=rows.map(row=>{
     const severity=["red","yellow","green"].includes(row.severity)?row.severity:"green";
