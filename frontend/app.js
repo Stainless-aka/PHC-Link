@@ -505,8 +505,14 @@ async function dashboardView() {
     else root.innerHTML='<section class="panel"><h2>Administration unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="dashboardView()">Retry</button></section>';
   }
 }
+function offlineAccessView(){
+  const root=document.getElementById("root");
+  const profile=readOfflineProfile();
+  root.innerHTML='<section class="auth-shell"><div class="auth-card"><div class="auth-mark">+</div><div class="eyebrow">PHC LINK · OFFLINE ACCESS</div><h2>Sign in with your offline PIN</h2>'+(profile?offlineLoginMarkup():'<p class="sub">No offline access is set up on this device. Connect to the internet and sign in once to create your 6-digit PIN.</p>')+'</div></section>';
+}
 async function loginPageView() {
   const root=document.getElementById("root");
+  if(!navigator.onLine){offlineAccessView();return;}
   root.innerHTML='<div class="dashboard"><p class="sub">Checking account access…</p></div>';
   try {
     const setup=await api("/api/setup/status",{headers:{}});
@@ -527,6 +533,8 @@ async function loginPageView() {
   }
 }
 function render() {
+  // A disconnected device must always start at the PIN gate, never reveal a saved workspace.
+  if(!navigator.onLine&&sessionStorage.getItem("phclink-offline-unlocked")!=="1"){offlineAccessView();return;}
   if(WORKSPACE==="admin") dashboardView();
   else if(WORKSPACE==="facility") facilityWorkspace();
   else if(WORKSPACE==="clinician") clinicianWorkspace();
@@ -814,7 +822,13 @@ window.addEventListener("online",async()=>{
     if(WORKSPACE==="facility")facilityWorkspace();
   }catch(_){}
 });
-window.addEventListener("offline",updateSyncIndicator);
+window.addEventListener("offline",()=>{
+  updateSyncIndicator();
+  // Require the staff member to unlock with their PIN whenever connectivity is lost.
+  sessionStorage.removeItem("phclink-offline-unlocked");
+  STATE.user=null;STATE.facilityId=null;STATE.offlineMode=false;
+  offlineAccessView();
+});
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("service-worker.js").catch(()=>{}));
 let phcDeferredInstall=null;
 function phcIsStandalone(){
