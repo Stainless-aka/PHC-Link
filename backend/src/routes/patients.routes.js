@@ -225,7 +225,7 @@ router.post('/lookup', async (req, res, next) => {
       return res.status(verified.status).json({ error: verified.error });
     }
     const record = await client.query(
-      `SELECT p.id,p.patient_code,p.full_name,p.age_years,p.sex,p.phone,p.next_of_kin_name,
+      `SELECT p.id,p.patient_code,p.full_name,p.date_of_birth,p.age_years,p.sex,p.phone,p.next_of_kin_name,
               p.next_of_kin_phone,p.blood_group,p.known_conditions,p.allergies,p.created_at,
               f.name AS registered_facility,l.name AS registered_lga,s.name AS registered_state
        FROM patients p JOIN facilities f ON f.id=p.facility_id
