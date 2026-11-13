@@ -32,7 +32,7 @@ router.get('/', async (req, res, next) => {
     }
     const result = await client.query(
       `SELECT r.id, r.referral_code, r.origin_facility_id, r.destination_facility_id,
-              r.patient_id, p.patient_code, p.full_name AS patient_name, r.reason_code, r.urgency,
+              r.patient_id, p.patient_code, r.reason_code, r.urgency,
               r.status, r.created_at, r.updated_at,
               latest_event.event_type AS latest_event_type, latest_event.notes AS clinician_reply,
               latest_event.created_at AS reply_at,
@@ -58,7 +58,7 @@ router.get('/clinician/inbox', async (req, res, next) => {
   try {
     const result = await pool.query(
       `SELECT r.id,r.referral_code,r.urgency,r.status,r.reason_code,r.created_at,r.updated_at,
-              p.patient_code,p.full_name AS patient_name,p.sex,p.date_of_birth,
+              p.patient_code,
               src.name AS origin_facility,src.code AS origin_code,
               l.name AS origin_lga,s.name AS origin_state,
               latest_event.notes AS latest_reply
