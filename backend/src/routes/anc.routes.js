@@ -10,16 +10,16 @@ router.use(requireAuth, requireRole('health_worker', 'clinician'));
 function canViewSensitiveTests(user){return ['doctor','medical_officer','nurse','midwife'].includes(user.designation);}
 async function canAccessFacility(client,user,facilityId){
   const r=await client.query(
-    \`SELECT 1 FROM facility_users fu JOIN facilities f ON f.id=fu.facility_id
-     WHERE fu.user_id=$1 AND fu.facility_id=$2 AND fu.is_active=TRUE AND f.is_active=TRUE\`,
+    `SELECT 1 FROM facility_users fu JOIN facilities f ON f.id=fu.facility_id
+     WHERE fu.user_id=$1 AND fu.facility_id=$2 AND fu.is_active=TRUE AND f.is_active=TRUE`,
     [user.id,facilityId]
   );
   return r.rowCount>0;
 }
 async function getPregnancy(client,user,id){
   const r=await client.query(
-    \`SELECT p.*,pt.patient_code,pt.full_name,pt.age_years,pt.phone,pt.address,pt.next_of_kin_name,pt.next_of_kin_phone
-     FROM anc_pregnancies p JOIN patients pt ON pt.id=p.patient_id WHERE p.id=$1\`,[id]
+    `SELECT p.*,pt.patient_code,pt.full_name,pt.age_years,pt.phone,pt.address,pt.next_of_kin_name,pt.next_of_kin_phone
+     FROM anc_pregnancies p JOIN patients pt ON pt.id=p.patient_id WHERE p.id=$1`,[id]
   );
   if(!r.rowCount||!(await canAccessFacility(client,user,r.rows[0].facility_id)))return null;
   return r.rows[0];
@@ -45,20 +45,20 @@ router.get('/',async(req,res,next)=>{
     if(!facilityId||!(await canAccessFacility(client,req.session.user,facilityId)))return res.status(403).json({error:'You cannot access antenatal records at this facility.'});
     await client.query("UPDATE anc_appointments SET status='missed' WHERE facility_id=$1 AND status='scheduled' AND appointment_date<CURRENT_DATE",[facilityId]);
     const [pregnancies,counts]=await Promise.all([
-      client.query(\`SELECT p.id,p.patient_id,p.pregnancy_number,p.lmp,p.edd,p.status,p.created_at,
+      client.query(`SELECT p.id,p.patient_id,p.pregnancy_number,p.lmp,p.edd,p.status,p.created_at,
         pt.patient_code,pt.full_name,pt.age_years,
         GREATEST(0,FLOOR(CURRENT_DATE-p.lmp)::int) AS gestational_days,
         EXISTS(SELECT 1 FROM anc_risk_flags rf WHERE rf.pregnancy_id=p.id AND rf.status IN ('open','reviewed')) AS high_risk
         FROM anc_pregnancies p JOIN patients pt ON pt.id=p.patient_id
-        WHERE p.facility_id=$1 ORDER BY p.created_at DESC LIMIT 300\`,[facilityId]),
-      client.query(\`SELECT
+        WHERE p.facility_id=$1 ORDER BY p.created_at DESC LIMIT 300`,[facilityId]),
+      client.query(`SELECT
         COUNT(DISTINCT p.id)::int AS registered,
         COUNT(DISTINCT p.id) FILTER(WHERE p.status='active')::int AS active,
         (SELECT COUNT(*)::int FROM anc_visits v WHERE v.facility_id=$1) AS visits,
         COUNT(DISTINCT p.id) FILTER(WHERE EXISTS(SELECT 1 FROM anc_risk_flags r WHERE r.pregnancy_id=p.id AND r.status IN ('open','reviewed')))::int AS high_risk,
         (SELECT COUNT(*)::int FROM anc_appointments a WHERE a.facility_id=$1 AND a.status='missed') AS missed,
         (SELECT COUNT(*)::int FROM anc_deliveries d WHERE d.facility_id=$1) AS deliveries
-        FROM anc_pregnancies p WHERE p.facility_id=$1\`,[facilityId])
+        FROM anc_pregnancies p WHERE p.facility_id=$1`,[facilityId])
     ]);
     res.json({pregnancies:pregnancies.rows,analytics:counts.rows[0]});
   }catch(e){next(e);}finally{client.release();}
@@ -87,12 +87,12 @@ router.post('/registrations',async(req,res,next)=>{
     const stateCode=/yobe/i.test(facility.rows[0].state_name)?'YB':facility.rows[0].state_name.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase();
     const code=stateCode+'-'+String(facility.rows[0].code).replace(/[^A-Za-z0-9-]/g,'').toUpperCase().replace(/^YB-/,'')+'-'+String(n.rows[0].n+1).padStart(5,'0');
     const pin=String(randomInt(1000,10000)),hash=await bcrypt.hash(pin,12);
-    const patient=await client.query(\`INSERT INTO patients(facility_id,patient_code,full_name,age_years,sex,phone,address,next_of_kin_name,next_of_kin_phone,created_by,operation_id,pin_hash)
-      VALUES($1,$2,$3,$4,'female',$5,$6,$7,$8,$9,$10,$11) RETURNING id,patient_code,full_name,age_years\`,
+    const patient=await client.query(`INSERT INTO patients(facility_id,patient_code,full_name,age_years,sex,phone,address,next_of_kin_name,next_of_kin_phone,created_by,operation_id,pin_hash)
+      VALUES($1,$2,$3,$4,'female',$5,$6,$7,$8,$9,$10,$11) RETURNING id,patient_code,full_name,age_years`,
       [facilityId,code,fullName,age,phone,address,kin,kinPhone,req.session.user.id,op,hash]);
     const edd=new Date(lmp+'T00:00:00Z');edd.setUTCDate(edd.getUTCDate()+280);
-    const preg=await client.query(\`INSERT INTO anc_pregnancies(patient_id,facility_id,pregnancy_number,lmp,edd,previous_pregnancy_history,registered_by,operation_id)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,patient_id,pregnancy_number,lmp,edd,status\`,
+    const preg=await client.query(`INSERT INTO anc_pregnancies(patient_id,facility_id,pregnancy_number,lmp,edd,previous_pregnancy_history,registered_by,operation_id)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id,patient_id,pregnancy_number,lmp,edd,status`,
       [patient.rows[0].id,facilityId,pregnancyNumber,lmp,edd.toISOString().slice(0,10),shortText(d.previousPregnancyHistory,3000),req.session.user.id,op]);
     await log(client,req.session.user,'ANC_PREGNANCY_REGISTERED','anc_pregnancy',preg.rows[0].id,{facilityId,patientCode:code});
     await client.query('COMMIT');
@@ -185,8 +185,8 @@ router.post('/:id/delivery',async(req,res,next)=>{
  const op=operationId(req.body.operationId);if(!op)return res.status(400).json({error:'Valid operation ID required.'});
  const method=String(req.body.deliveryMethod||''),outcome=String(req.body.birthOutcome||'');
  if(!['vaginal','assisted_vaginal','caesarean','other'].includes(method)||!['live_birth','stillbirth','neonatal_death','other'].includes(outcome))return res.status(400).json({error:'Select valid delivery method and birth outcome.'});
- const r=await c.query(\`INSERT INTO anc_deliveries(pregnancy_id,facility_id,delivery_date,delivery_method,baby_condition,birth_outcome,complications,notes,recorded_by,operation_id)
- VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(pregnancy_id) DO NOTHING RETURNING *\`,
+ const r=await c.query(`INSERT INTO anc_deliveries(pregnancy_id,facility_id,delivery_date,delivery_method,baby_condition,birth_outcome,complications,notes,recorded_by,operation_id)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(pregnancy_id) DO NOTHING RETURNING *`,
  [p.id,p.facility_id,dateValue(req.body.deliveryDate,'Delivery date'),method,shortText(req.body.babyCondition,1000),outcome,shortText(req.body.complications,2000),shortText(req.body.notes,2000),req.session.user.id,op]);
  if(!r.rowCount){const old=await c.query('SELECT * FROM anc_deliveries WHERE pregnancy_id=$1',[p.id]);return res.json({duplicate:true,record:old.rows[0]});}
  await c.query("UPDATE anc_pregnancies SET status='delivered',updated_at=NOW() WHERE id=$1",[p.id]);
