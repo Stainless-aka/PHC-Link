@@ -126,7 +126,6 @@ router.patch('/users/:userId/role', async (req,res,next)=>{
   const allowed=['health_worker','clinician','lga_officer','state_admin','system_admin'];
   const role=String(req.body.role||'');
   if(!allowed.includes(role))return res.status(400).json({error:'Select a valid account role.'});
-  if(role==='clinician'&&!['doctor','medical_officer','nurse','midwife','chew','cho'].includes(req.body.designation))return res.status(400).json({error:'Select a professional designation before assigning the Clinician role.'});
   const client=await pool.connect();
   try{
     await client.query('BEGIN');
