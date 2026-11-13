@@ -246,6 +246,26 @@ router.post('/lookup', async (req, res, next) => {
   } finally { client.release(); }
 });
 
+router.post('/:patientId/initialize-pin', async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    if (req.session.user.role !== 'health_worker') return res.status(403).json({ error: 'Only the registered PHC worker can initialize a patient PIN.' });
+    await client.query('BEGIN');
+    const existing = await client.query('SELECT id,facility_id,patient_code,pin_hash FROM patients WHERE id=$1 FOR UPDATE', [req.params.patientId]);
+    if (!existing.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Patient record not found.' }); }
+    if (!(await canAccessFacility(client, req.session.user, existing.rows[0].facility_id))) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'You cannot initialize this patient record.' }); }
+    if (existing.rows[0].pin_hash) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This patient already has a PIN.' }); }
+    const pin = String(randomInt(1000,10000));
+    const hash = await bcrypt.hash(pin,12);
+    await client.query('UPDATE patients SET pin_hash=$1,pin_failed_attempts=0,pin_locked_until=NULL WHERE id=$2',[hash,req.params.patientId]);
+    await client.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,\'PATIENT_PIN_INITIALIZED\',\'patient\',$2)',[req.session.user.id,req.params.patientId]);
+    await client.query('COMMIT');
+    const qrCode = await QRCode.toDataURL(existing.rows[0].patient_code,{errorCorrectionLevel:'M',margin:1,width:240});
+    res.json({patient:{id:existing.rows[0].id,patient_code:existing.rows[0].patient_code},patientPin:pin,qrCode});
+  } catch(error) { await client.query('ROLLBACK').catch(()=>{}); next(error); }
+  finally { client.release(); }
+});
+
 router.post('/:patientId/visits', async (req, res, next) => {
   const client = await pool.connect();
   try {
@@ -256,6 +276,7 @@ router.post('/:patientId/visits', async (req, res, next) => {
     const referralStatus = String(req.body.referralStatus || 'not_referred');
     if (complaint.length < 2 || complaint.length > 1000 || (treatment && treatment.length > 2000) || (clinicianNote && clinicianNote.length > 2000)) return res.status(400).json({ error: 'Enter a valid complaint and keep notes within 2,000 characters.' });
     if (!['not_referred','referred','accepted','completed'].includes(referralStatus)) return res.status(400).json({ error: 'Select a valid referral status.' });
+    if (clinicianNote && req.session.user.role !== 'clinician') return res.status(403).json({ error: 'Only a clinician can add a clinician note.' });
     await client.query('BEGIN');
     if (!(await canAccessPatientNetwork(client, req.session.user, req.params.patientId))) {
       await client.query('ROLLBACK');
