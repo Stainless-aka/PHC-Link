@@ -719,3 +719,156 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 :root[data-theme="dark"] .ref-icon,
 :root[data-theme="dark"] .detail-mark,
 :root[data-theme="dark"] .facility-mark{background:#203541;color:#a8c2ce}
+
+/* Dark theme: final contrast pass for legacy fixed-colour components.
+   Keep severity/status colours intentional while replacing low-contrast
+   light-theme text and surfaces with the shared dark palette. */
+:root[data-theme="dark"] .admin-topbar>div:first-child strong,
+:root[data-theme="dark"] .admin-account strong,
+:root[data-theme="dark"] .admin-user-cell strong,
+:root[data-theme="dark"] .admin-empty strong,
+:root[data-theme="dark"] .admin-kpi>strong,
+:root[data-theme="dark"] .admin-section-heading h3,
+:root[data-theme="dark"] .admin-metric-heading h3,
+:root[data-theme="dark"] .admin-table-panel td,
+:root[data-theme="dark"] .admin-directory-grid td,
+:root[data-theme="dark"] .network-step-heading strong,
+:root[data-theme="dark"] .network-form-heading strong,
+:root[data-theme="dark"] .facility-welcome h3,
+:root[data-theme="dark"] .facility-metric strong,
+:root[data-theme="dark"] .facility-card-head h3,
+:root[data-theme="dark"] .facility-record strong,
+:root[data-theme="dark"] .facility-stock-list strong,
+:root[data-theme="dark"] .stock-summary strong,
+:root[data-theme="dark"] .detail-stock-top strong,
+:root[data-theme="dark"] .ref-details strong,
+:root[data-theme="dark"] .alert-row strong,
+:root[data-theme="dark"] .clinician-referral-top h3,
+:root[data-theme="dark"] .patient-record-summary strong,
+:root[data-theme="dark"] .patient-edit-details summary{
+  color:var(--ink)
+}
+:root[data-theme="dark"] .admin-breadcrumb,
+:root[data-theme="dark"] .admin-topbar>div:first-child,
+:root[data-theme="dark"] .admin-account small,
+:root[data-theme="dark"] .admin-kpi-top,
+:root[data-theme="dark"] .admin-kpi>small,
+:root[data-theme="dark"] .admin-section-heading p,
+:root[data-theme="dark"] .admin-metric-heading>span,
+:root[data-theme="dark"] .admin-table-panel th,
+:root[data-theme="dark"] .admin-directory-grid th,
+:root[data-theme="dark"] .admin-user-cell small,
+:root[data-theme="dark"] .admin-footer,
+:root[data-theme="dark"] .admin-footer span,
+:root[data-theme="dark"] .admin-empty p,
+:root[data-theme="dark"] .admin-unassigned,
+:root[data-theme="dark"] .admin-muted,
+:root[data-theme="dark"] .network-step-heading small,
+:root[data-theme="dark"] .network-form-heading small,
+:root[data-theme="dark"] .facility-welcome p,
+:root[data-theme="dark"] .facility-metric span,
+:root[data-theme="dark"] .facility-metric small,
+:root[data-theme="dark"] .facility-record small,
+:root[data-theme="dark"] .facility-stock-list,
+:root[data-theme="dark"] .facility-stock-list small,
+:root[data-theme="dark"] .facility-empty,
+:root[data-theme="dark"] .facility-empty strong,
+:root[data-theme="dark"] .staff-designation-label,
+:root[data-theme="dark"] .ref-age,
+:root[data-theme="dark"] .stock-summary,
+:root[data-theme="dark"] .detail-stock-top,
+:root[data-theme="dark"] .detail-stock-top small,
+:root[data-theme="dark"] .detail-stock-meta,
+:root[data-theme="dark"] .alert-row small,
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .more-alerts,
+:root[data-theme="dark"] .demo-disclaimer,
+:root[data-theme="dark"] .clinician-referral-top p,
+:root[data-theme="dark"] .clinician-response-form label,
+:root[data-theme="dark"] .patient-record-summary span{
+  color:var(--muted)
+}
+:root[data-theme="dark"] .admin-kpi,
+:root[data-theme="dark"] .admin-directory-card,
+:root[data-theme="dark"] .admin-patient-facility,
+:root[data-theme="dark"] .network-setup-step,
+:root[data-theme="dark"] .network-form-section,
+:root[data-theme="dark"] .facility-data-card,
+:root[data-theme="dark"] .facility-metric,
+:root[data-theme="dark"] .facility-record,
+:root[data-theme="dark"] .facility-stock-list,
+:root[data-theme="dark"] .admin-health-tip-row{
+  background:var(--white);
+  border-color:var(--line)
+}
+:root[data-theme="dark"] .network-form-actions,
+:root[data-theme="dark"] .admin-table-panel th,
+:root[data-theme="dark"] .admin-directory-grid th,
+:root[data-theme="dark"] .admin-patient-filter-grid input,
+:root[data-theme="dark"] .admin-patient-filter-grid select,
+:root[data-theme="dark"] .admin-search,
+:root[data-theme="dark"] .admin-section-count,
+:root[data-theme="dark"] .admin-role,
+:root[data-theme="dark"] .detail-mark,
+:root[data-theme="dark"] .facility-record-avatar{
+  background:#203541;
+  color:#cbd8df;
+  border-color:var(--line)
+}
+:root[data-theme="dark"] .tabs,
+:root[data-theme="dark"] body[data-workspace="facility"] .tabs,
+:root[data-theme="dark"] body[data-workspace="facility"] .hdr{
+  background:#172633;
+  border-color:var(--line)
+}
+:root[data-theme="dark"] body[data-workspace="facility"] .hdr b,
+:root[data-theme="dark"] body[data-workspace="facility"] .tabs a{
+  color:var(--ink)
+}
+:root[data-theme="dark"] body[data-workspace="facility"] .tabs a[aria-current="page"]{
+  background:#203b43;
+  border-color:#315653;
+  color:#8bd6ce
+}
+:root[data-theme="dark"] .facility-kicker,
+:root[data-theme="dark"] .facility-card-head a,
+:root[data-theme="dark"] .facility-empty a,
+:root[data-theme="dark"] .admin-section-heading .eyebrow,
+:root[data-theme="dark"] .admin-metric-heading .eyebrow{
+  color:#79d1c8
+}
+:root[data-theme="dark"] .facility-role,
+:root[data-theme="dark"] .facility-status,
+:root[data-theme="dark"] .facility-status.is-complete,
+:root[data-theme="dark"] .admin-live-label{
+  border-color:var(--line)
+}
+:root[data-theme="dark"] .facility-status{background:#453719;color:#f2d17e}
+:root[data-theme="dark"] .facility-status.is-complete{background:#193c2d;color:#8bd6a8}
+:root[data-theme="dark"] .admin-live-label{background:#19382f;color:#91d5b1}
+:root[data-theme="dark"] .admin-status.active,
+:root[data-theme="dark"] .clinician-live{color:#83d9ad}
+:root[data-theme="dark"] .admin-status.inactive{color:#e4a58c}
+:root[data-theme="dark"] .clinician-emergency-label{color:#ff999d}
+:root[data-theme="dark"] .clinician-status{background:#45282b;color:#ffaaa5}
+:root[data-theme="dark"] .clinician-reject{background:#482729;color:#ffaaa5;border-color:#704044}
+:root[data-theme="dark"] .detail-track{background:#2a3c49}
+:root[data-theme="dark"] .phc-alert-map{background:#172633}
+:root[data-theme="dark"] .leaflet-popup-content-wrapper,
+:root[data-theme="dark"] .leaflet-popup-tip{background:#172633;color:#e5edf2}
+:root[data-theme="dark"] .leaflet-popup-content{color:#e5edf2}
+:root[data-theme="dark"] .leaflet-popup-content a{color:#79d1c8}
+:root[data-theme="dark"] .phc-map-fallback{background:#172633;color:var(--muted)}
+:root[data-theme="dark"] .alert-code-red{background:#482729;color:#ffaaa5}
+:root[data-theme="dark"] .alert-code-yellow{background:#453719;color:#f2d17e}
+:root[data-theme="dark"] .alert-code-green{background:#193c2d;color:#8bd6a8}
+:root[data-theme="dark"] .theme-toggle{background:#203541;color:#edf5f8;border-color:#3a505e}
+:root[data-theme="dark"] .password-toggle{color:#c0cdd5}
+:root[data-theme="dark"] .password-toggle:hover{background:#263b49;color:#fff}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder{color:#91a3af}
+:root[data-theme="dark"] .table-wrap{border-color:var(--line)}
+:root[data-theme="dark"] .table-wrap table{color:var(--ink)}
+:root[data-theme="dark"] .table-wrap th{background:#1d303d;color:#bdcbd4;border-color:var(--line)}
+:root[data-theme="dark"] .table-wrap td{color:var(--ink);border-color:var(--line)}
+:root[data-theme="dark"] .table-wrap tbody tr:hover{background:#203540}
