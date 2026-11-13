@@ -927,3 +927,17 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .immunization-card-status{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.immunization-card-status.completed{background:#e8f6ee;color:#176b3a}.immunization-card-status.missed{background:#fff0ed;color:#a52e20}.immunization-card-status.pending{background:#edf3f8;color:#3d5c73}.immunization-card-status.review{background:#fff7df;color:#805b00}
 @media print{body[data-page="immunization"] .hdr,body[data-page="immunization"] .net,body[data-page="immunization"] .patient-card-actions,body[data-page="immunization"] form,body[data-page="immunization"] [data-close-immunization-child]{display:none!important}body[data-page="immunization"] .panel{break-inside:avoid;box-shadow:none}}
 :root[data-theme="dark"] .immunization-card-status.completed{background:#153d2a;color:#a6e6bd}:root[data-theme="dark"] .immunization-card-status.missed{background:#4a211e;color:#ffc0b6}:root[data-theme="dark"] .immunization-card-status.pending{background:#203746;color:#c1d9e8}:root[data-theme="dark"] .immunization-card-status.review{background:#473b1c;color:#f4d78c}
+
+
+/* Printable immunization cards */
+.immunization-print-modal{position:fixed;inset:0;z-index:10000;background:rgba(10,24,35,.72);display:grid;place-items:center;padding:20px;overflow:auto}
+.immunization-print-card{width:min(760px,100%);background:#fff;color:#172b3a;border-radius:16px;padding:28px;box-shadow:0 20px 70px rgba(0,0,0,.25)}
+.immunization-patient-code{font-size:22px;font-weight:800;letter-spacing:.08em;margin:10px 0 16px;color:#116b86}
+:root[data-theme="dark"] .immunization-print-card{background:#fff;color:#172b3a}
+@media print{
+ body:has(.immunization-print-modal) *{visibility:hidden!important}
+ .immunization-print-modal,.immunization-print-modal *{visibility:visible!important}
+ .immunization-print-modal{position:absolute;inset:0;background:#fff;padding:0;display:block}
+ .immunization-print-card{width:100%;max-width:none;border-radius:0;box-shadow:none;padding:20px}
+ .immunization-print-card .patient-card-actions{display:none!important}
+}
