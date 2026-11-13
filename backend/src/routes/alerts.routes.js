@@ -55,7 +55,7 @@ router.get('/alerts', requireAuth, async (req,res,next) => {
     }
     const result=await client.query(
       `SELECT f.id AS facility_id,f.name AS facility_name,f.code AS phc_code,
-              f.latitude,f.longitude,l.name AS lga_name,s.name AS state_name,
+              f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name,
               COALESCE(latest.severity,'green') AS severity,
               latest.code AS latest_code,latest.details AS latest_details,
               latest.created_at AS latest_at
