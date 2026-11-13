@@ -113,7 +113,7 @@ router.get('/', async (req, res, next) => {
     if (!facilityId) return res.status(400).json({ error: 'facilityId is required.' });
     if (!(await canAccessFacility(client, req.session.user, facilityId))) return res.status(403).json({ error: 'You cannot access patients at this facility.' });
     const result = await client.query(
-      `SELECT id,patient_code,age_years,sex,created_at
+      `SELECT id,patient_code,age_years,sex,created_at,(pin_hash IS NOT NULL) AS has_pin
        FROM patients WHERE facility_id=$1 ORDER BY created_at DESC LIMIT 250`,
       [facilityId]
     );
@@ -202,6 +202,26 @@ router.post('/', async (req, res, next) => {
     if (error.status) return res.status(error.status).json({ error: error.message });
     next(error);
   } finally { client.release(); }
+});
+
+router.post('/:patientId/initialize-pin', async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    if (!['health_worker','clinician'].includes(req.session.user.role)) return res.status(403).json({ error: 'Only PHC workers and clinicians can issue patient cards.' });
+    await client.query('BEGIN');
+    const existing = await client.query('SELECT id,facility_id,patient_code,full_name,age_years,sex,pin_hash FROM patients WHERE id=$1 FOR UPDATE',[req.params.patientId]);
+    if (!existing.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Patient record not found.' }); }
+    if (existing.rows[0].pin_hash) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This patient already has a PIN. Ask the patient for it.' }); }
+    if (!(await canAccessFacility(client,req.session.user,existing.rows[0].facility_id))) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Only the registered PHC can issue the first patient PIN.' }); }
+    const pin=String(randomInt(1000,10000)),pinHash=await bcrypt.hash(pin,12);
+    await client.query('UPDATE patients SET pin_hash=$1,pin_failed_attempts=0,pin_locked_until=NULL WHERE id=$2',[pinHash,req.params.patientId]);
+    await client.query(`INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata)
+      VALUES($1,'PATIENT_PIN_INITIALIZED','patient',$2,$3)`,[req.session.user.id,req.params.patientId,JSON.stringify({patientCode:existing.rows[0].patient_code})]);
+    await client.query('COMMIT');
+    const qrCode=await QRCode.toDataURL(existing.rows[0].patient_code,{errorCorrectionLevel:'M',margin:1,width:240});
+    res.json({patient:existing.rows[0],patientPin:pin,qrCode});
+  } catch(error) { await client.query('ROLLBACK').catch(()=>{}); next(error); }
+  finally { client.release(); }
 });
 
 router.post('/lookup', async (req, res, next) => {
