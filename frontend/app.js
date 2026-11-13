@@ -697,7 +697,7 @@ async function handleSubmit(event) {
     event.preventDefault();if(form.dataset.submitting==="true")return;form.dataset.submitting="true";
     const buttons=[...form.querySelectorAll('button[type="submit"]')];buttons.forEach(b=>{b.disabled=true;b.dataset.label=b.textContent;b.textContent="Saving…";});
     const d=formData(form),route=immunizationRoutes[form.id](),payload={...route.payload,operationId:form.dataset.operationId||(form.dataset.operationId=crypto.randomUUID())};
-    try{const result=await api(route.path,{method:"POST",body:JSON.stringify(payload)});if(form.id==="immunizationChildForm"&&result.patientPin)showImmunizationRegistrationCard(result);notify("Immunization record saved.");if(form.id==="immunizationChildForm")STATE.openImmunizationChildId=null;await facilityWorkspace();}
+    try{const result=await api(route.path,{method:"POST",body:JSON.stringify(payload)});if(form.id==="immunizationChildForm"&&result.patientPin)showImmunizationRegistrationCard(result);if(form.id==="immunizationColdChainForm"&&result.warning)notify(result.warning,true);else notify("Immunization record saved.");if(form.id==="immunizationChildForm")STATE.openImmunizationChildId=null;await facilityWorkspace();}
     catch(error){if(queueOfflineAction(route.path,payload,error)){notify("Saved offline. This immunization record is pending synchronization.");form.reset();delete form.dataset.operationId;form.dataset.submitting="false";buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.label||"Save";});updateSyncIndicator();}else{form.dataset.submitting="false";buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.label||"Save";});notify(error.message,true);}}
     return;
   }
