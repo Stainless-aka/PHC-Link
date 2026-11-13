@@ -254,8 +254,6 @@ router.post('/:patientId/initialize-pin', async (req, res, next) => {
     await client.query('BEGIN');
     const existing = await client.query('SELECT id,facility_id,patient_code,full_name,age_years,sex,pin_hash FROM patients WHERE id=$1 FOR UPDATE', [req.params.patientId]);
     if (!existing.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Patient record not found.' }); }
-    const verified = await verifyPatientPin(client, patientId, pin);
-    if (!verified.ok) { await client.query('COMMIT'); return res.status(verified.status).json({ error: verified.error }); }
     if (!(await canAccessFacility(client, req.session.user, existing.rows[0].facility_id))) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'You cannot initialize this patient record.' }); }
     if (existing.rows[0].pin_hash) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This patient already has a PIN.' }); }
     const pin = String(randomInt(1000,10000));
