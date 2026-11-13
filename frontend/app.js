@@ -156,9 +156,17 @@ function applyFacilityLanguage(){
 function facilityLoginView() {
   return '<section class="dashboard"><div class="dash-head"><div><div class="eyebrow">FACILITY WORKSPACE</div><h2>Staff sign in</h2><p class="sub">Registered health workers can access their assigned facility after signing in.</p></div></div><div class="panel setup-panel"><form id="loginForm" class="admin-form">'+field("Email address","loginEmail","email",true,'autocomplete="username"')+field("Password","loginPassword","password",true,'autocomplete="current-password"')+'<button class="btn" type="submit">Sign in to facility</button></form></div></section>';
 }
+function showAncReferralSheet(referral,payload){
+ const p=STATE.openAncDetail?.pregnancy||{},to=STATE.ancDestinations?.find(x=>x.id===payload.destinationFacilityId)||{};
+ const modal=document.createElement("div");modal.className="anc-referral-modal";
+ modal.innerHTML='<section class="anc-referral-sheet"><div class="eyebrow">PHC LINK · MATERNAL HEALTH</div><h2>ANC Referral Form</h2><p><strong>Referral code:</strong> '+escapeHtml(referral.referral_code||"")+'</p><hr><h3>Patient details</h3><p><strong>Name:</strong> '+escapeHtml(p.full_name||"")+'</p><p><strong>Patient ID:</strong> '+escapeHtml(p.patient_code||"")+'</p><p><strong>Age:</strong> '+escapeHtml(p.age_years||"—")+'</p><p><strong>Gestational age:</strong> '+escapeHtml(p.gestational_weeks??"—")+' weeks</p><p><strong>EDD:</strong> '+escapeHtml(String(p.edd||"").slice(0,10))+'</p><hr><p><strong>Receiving facility:</strong> '+escapeHtml(to.name||"")+' · '+escapeHtml(to.lga_name||"")+'</p><p><strong>Urgency:</strong> '+escapeHtml(payload.urgency||"")+'</p><p><strong>Reason:</strong> '+escapeHtml(payload.reasonCode||"")+'</p><p><strong>Status:</strong> '+escapeHtml(referral.status||"submitted")+'</p><div class="anc-signatures"><p>Referring clinician / designation: __________________________</p><p>Signature / date: __________________________</p><p>Receiving clinician / time received: __________________________</p></div><p class="hint">Confidential clinical information. Share only with authorised receiving healthcare professionals.</p><div class="patient-card-actions"><button class="btn sec" type="button" data-print-anc-sheet>Print referral</button><button class="btn" type="button" data-close-anc-sheet>Close</button></div></section>';
+ document.body.appendChild(modal);
+}
 async function antenatalWorkspaceMarkup(facility){
   const facilityId=facility.id;
   const overview=await offlineSafeApi("/api/anc?facilityId="+encodeURIComponent(facilityId),{pregnancies:[],analytics:{registered:0,active:0,visits:0,high_risk:0,missed:0,deliveries:0}});
+  const destinations=await offlineSafeApi("/api/facilities/referral-destinations?originFacilityId="+encodeURIComponent(facilityId),{facilities:[]});
+  STATE.ancDestinations=destinations.facilities||[];
   STATE.ancPregnancies=overview.pregnancies||[];
   let selected=null,detail=null;
   if(STATE.openAncPregnancyId){
@@ -201,6 +209,7 @@ async function antenatalWorkspaceMarkup(facility){
     html+='<section class="panel admin-panel"><h3>Appointments</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Purpose</th><th>Status</th></tr></thead><tbody>'+(apptRows||'<tr><td colspan="3">No follow-up appointments.</td></tr>')+'</tbody></table></div><form id="ancAppointmentForm" class="admin-form"><input type="hidden" name="pregnancyId" value="'+escapeHtml(selected.id)+'">'+field("Follow-up date","appointmentDate","date",true)+field("Purpose","purpose","text",false,'maxlength="500" placeholder="Routine ANC follow-up"')+'<button class="btn" type="submit">Schedule appointment</button></form></section>';
     if(!detail.delivery)html+='<section class="panel admin-panel"><h3>Delivery record</h3><form id="ancDeliveryForm" class="admin-form"><input type="hidden" name="pregnancyId" value="'+escapeHtml(selected.id)+'">'+field("Delivery date","deliveryDate","date",true)+selectField("Delivery method","deliveryMethod",'<option value="vaginal">Vaginal</option><option value="assisted_vaginal">Assisted vaginal</option><option value="caesarean">Caesarean</option><option value="other">Other</option>')+selectField("Birth outcome","birthOutcome",'<option value="live_birth">Live birth</option><option value="stillbirth">Stillbirth</option><option value="neonatal_death">Neonatal death</option><option value="other">Other</option>')+'<label for="babyCondition">Baby condition</label><textarea id="babyCondition" name="babyCondition" rows="2"></textarea><label for="deliveryComplications">Complications</label><textarea id="deliveryComplications" name="complications" rows="2"></textarea><label for="deliveryNotes">Notes</label><textarea id="deliveryNotes" name="notes" rows="2"></textarea><button class="btn" type="submit">Save delivery outcome</button></form></section>';
     else html+='<section class="panel admin-panel"><h3>Delivery recorded</h3><p>'+escapeHtml(String(detail.delivery.delivery_date).slice(0,10))+' · '+escapeHtml(detail.delivery.delivery_method)+' · '+escapeHtml(detail.delivery.birth_outcome)+'</p></section>';
+    html+='<section class="panel admin-panel"><h3>Referral to another facility</h3><p class="hint">Create a linked referral when a higher level of care is required. Confirm urgency with the responsible clinician.</p><form id="ancReferralForm" class="admin-form"><input type="hidden" name="pregnancyId" value="'+escapeHtml(selected.id)+'">'+selectField("Receiving facility","destinationFacilityId",options(STATE.ancDestinations,"id",f=>f.name+" · "+f.lga_name+", "+f.state_name),"Select destination",true)+selectField("Urgency","urgency",'<option value="routine">Routine</option><option value="urgent">Urgent</option><option value="emergency">Emergency</option>')+field("Reason for referral","reasonCode","text",true,'maxlength="100"')+'<button class="btn" type="submit">Create referral</button></form></section>';
     html+='<section class="panel admin-panel"><h3>Postnatal follow-up</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Follow-up</th><th>Observations</th><th>Danger signs</th></tr></thead><tbody>'+(postRows||'<tr><td colspan="4">No postnatal visits recorded.</td></tr>')+'</tbody></table></div><form id="ancPostnatalForm" class="admin-form"><input type="hidden" name="pregnancyId" value="'+escapeHtml(selected.id)+'">'+field("Follow-up date","visitDate","date",true)+selectField("Follow-up for","followUpFor",'<option value="mother">Mother</option><option value="newborn">Newborn</option><option value="both">Mother and newborn</option>')+'<label for="postnatalObservations">Observations</label><textarea id="postnatalObservations" name="observations" rows="2"></textarea><label for="postnatalDangerSigns">Danger signs / concerns</label><textarea id="postnatalDangerSigns" name="dangerSigns" rows="2"></textarea>'+field("Next follow-up date","nextVisitDate","date",false)+'<button class="btn" type="submit">Save postnatal visit</button></form></section>';
   }
   html+='<section class="panel admin-panel"><h3>Pregnancy register</h3><div class="table-wrap"><table><thead><tr><th>Woman / Patient ID</th><th>Gestation</th><th>EDD</th><th>Status</th><th>Risk</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="6">No pregnant women registered at this facility yet.</td></tr>')+'</tbody></table></div></section>';
@@ -619,7 +628,8 @@ async function handleSubmit(event) {
     ancMedicationForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/medications",payload:d}),
     ancAppointmentForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/appointments",payload:d}),
     ancDeliveryForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/delivery",payload:d}),
-    ancPostnatalForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/postnatal",payload:d})
+    ancPostnatalForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/postnatal",payload:d}),
+    ancReferralForm:()=>({path:"/api/referrals",payload:{originFacilityId:STATE.facilityId,destinationFacilityId:d.destinationFacilityId,patientId:STATE.openAncDetail?.pregnancy?.patient_id,reasonCode:d.reasonCode,urgency:d.urgency}})
   };
   if(ancRoutes[form.id]){
     event.preventDefault();
@@ -630,8 +640,9 @@ async function handleSubmit(event) {
     const d=formData(form),route=ancRoutes[form.id]();
     const payload={...route.payload,operationId:form.dataset.operationId||(form.dataset.operationId=crypto.randomUUID())};
     try{
-      await api(route.path,{method:"POST",body:JSON.stringify(payload)});
-      notify("Antenatal record saved.");
+      const result=await api(route.path,{method:"POST",body:JSON.stringify(payload)});
+      if(form.id==="ancReferralForm"&&result.referral)showAncReferralSheet(result.referral,payload);
+      notify(form.id==="ancReferralForm"?"Referral created. Review and print the referral form.":"Antenatal record saved.");
       if(form.id==="ancRegistrationForm")STATE.openAncPregnancyId=null;
       await facilityWorkspace();
     }catch(error){
@@ -787,6 +798,8 @@ async function handleSubmit(event) {
 }
 document.addEventListener("submit",handleSubmit);
 document.addEventListener("click",async event=>{
+  if(event.target.closest("[data-print-anc-sheet]")){window.print();return;}
+  if(event.target.closest("[data-close-anc-sheet]")){event.target.closest(".anc-referral-modal")?.remove();return;}
   const openAnc=event.target.closest("[data-open-anc]");
   if(openAnc){STATE.openAncPregnancyId=openAnc.dataset.openAnc;try{STATE.openAncDetail=await api("/api/anc/"+encodeURIComponent(STATE.openAncPregnancyId));await facilityWorkspace();}catch(error){notify(error.message,true);}return;}
   if(event.target.closest("[data-close-anc]")){STATE.openAncPregnancyId=null;STATE.openAncDetail=null;facilityWorkspace();return;}
