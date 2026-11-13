@@ -17,7 +17,7 @@ Offline-first primary healthcare stock and referral coordination platform.
 6. Start the API: `npm run dev`.
 7. Check `http://localhost:3000/api/health`.
 
-The API runs separately from the current static prototype in `frontend/`. Frontend API integration and the genuine offline queue are the next implementation milestone.
+The static PWA in `frontend/` is integrated with the API. Its local outbox stores pending patient, visit, referral and stock actions and sends them when connectivity returns. Patient records are PIN-protected; verified records are cached encrypted on the device for offline access.
 
 ## API endpoints in this foundation
 
@@ -33,6 +33,13 @@ The API runs separately from the current static prototype in `frontend/`. Fronte
 - `GET /api/referrals?facilityId=...`
 - `POST /api/referrals`
 - `PATCH /api/referrals/:id/status`
+- `GET /api/patients?facilityId=...`
+- `GET /api/patients/search?q=...`
+- `POST /api/patients/lookup` (Patient ID + PIN required)
+- `POST /api/patients/:id/visits` (PIN required)
+- `PATCH /api/patients/:id` (PIN required)
+- `POST /api/alert` (shared web / LoRa gateway / SMS / USSD alert intake)
+- `GET /api/alerts` (role-scoped PHC status map)
 
 ## Account roles and professional designations
 
@@ -44,9 +51,13 @@ PHC Link separates account permissions from a staff member's professional qualif
 - \`lga_officer\`: LGA-level oversight.
 - \`health_worker\`: works within an assigned healthcare facility.
 
-**Professional designation** describes a health worker's qualification or position. Supported values include Doctor, Medical Officer, Nurse, Midwife, CHEW, CHO and Other. A designation does not grant permissions by itself.
+**Professional designation** describes a health worker's qualification or position. Supported values include Doctor, Medical Officer, Nurse, Midwife, CHEW and CHO. A designation does not grant permissions by itself.
 
-**Clinical response access** is a separate administrator-controlled capability for a designated health worker. It opens the emergency referral response desk while preserving access to the normal facility workspace. Only enabled staff can acknowledge or reject emergency referrals through that desk.
+**Clinical response access** is a separate administrator-controlled capability for a designated health worker. It opens the emergency referral response desk while preserving access to the normal facility workspace. Clinician accounts have the response desk by role; legacy health-worker accounts can still receive it through the separate administrator-controlled permission.
+
+## Alert gateway setup
+
+Set `ALERT_INGEST_KEY` on the API service before connecting a LoRa gateway or SMS/USSD provider. Send it in the `x-alert-key` header. The shared endpoint accepts `code`, `phc_code`, `details`, and an optional `source` (`web`, `lora`, `sms`, `ussd`, or `api`).
 
 ## Important
 
