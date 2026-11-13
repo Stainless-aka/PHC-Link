@@ -179,7 +179,7 @@ async function facilityWorkspace() {
     content+='</section>';
     const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"]]:(STATE.user.role==="lga_officer"?[["home","LGA overview","facility.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["ussd","USSD","ussd.html"]]);
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+((STATE.user.role==="clinician"||STATE.user.canRespondEmergency)?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div><div id="patientEditor" class="patient-editor" hidden><section class="patient-editor-card" role="dialog" aria-modal="true" aria-labelledby="patientEditorTitle"><div class="panel-head"><div><h3 id="patientEditorTitle">Edit patient details</h3><p>Update the selected patient record.</p></div><button class="btn sec sm" type="button" data-close-patient-editor>Close</button></div><form id="patientEditForm" class="admin-form"><input type="hidden" name="patientId" id="editPatientId">'+field("Patient full name","editPatientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","editPatientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","editPatientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","editPatientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<div class="patient-editor-actions"><button class="btn sec" type="button" data-close-patient-editor>Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>';
-    applyFacilityLanguage();if(STATE.user.role==="lga_officer")renderAlertMap("lgaAlertMap",STATE.alertFacilities||[]);updateSyncIndicator();flushOfflineQueue();
+    applyFacilityLanguage();if(STATE.user.role==="lga_officer"){renderAlertMap("lgaAlertMap",STATE.alertFacilities||[]);clearInterval(window.phcLgaAlertPoll);window.phcLgaAlertPoll=setInterval(()=>refreshAlertMap("lgaAlertMap","LGA PHC Alert Map"),10000);}updateSyncIndicator();flushOfflineQueue();
     clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),3000);
   } catch(error) {
     if(error.message==="Authentication required."){STATE.user=null;window.location.replace("index.html");}
@@ -272,8 +272,9 @@ function alertMapPanelMarkup(id,facilities,title="Yobe PHC Network"){
 }
 function renderAlertMap(id,facilities){
   const node=document.getElementById(id);if(!node)return;
+  window.phcAlertMaps=window.phcAlertMaps||{};if(window.phcAlertMaps[id]){window.phcAlertMaps[id].remove();delete window.phcAlertMaps[id];}
   if(!window.L){node.innerHTML='<div class="phc-map-fallback">Map tiles are unavailable. Facility status is still listed below.</div>';return;}
-  const map=L.map(node,{scrollWheelZoom:false}).setView([12.15,11.35],8);
+  const map=L.map(node,{scrollWheelZoom:false}).setView([12.15,11.35],8);window.phcAlertMaps[id]=map;
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:17,attribution:'© OpenStreetMap'}).addTo(map);
   const points=(facilities||[]).filter(row=>Number.isFinite(Number(row.latitude))&&Number.isFinite(Number(row.longitude)));
   points.forEach(row=>{
@@ -284,6 +285,14 @@ function renderAlertMap(id,facilities){
   if(points.length){const bounds=L.latLngBounds(points.map(row=>[Number(row.latitude),Number(row.longitude)]));map.fitBounds(bounds.pad(.25),{maxZoom:10});}
   else node.insertAdjacentHTML("beforeend",'<div class="phc-map-fallback">GPS coordinates are not yet available for the registered PHCs. Their status remains listed below.</div>');
   setTimeout(()=>map.invalidateSize(),80);
+}
+async function refreshAlertMap(id,title){
+  if(document.hidden)return;
+  try{
+    const data=await api("/api/alerts");STATE.alertFacilities=data.facilities||[];
+    const mapNode=document.getElementById(id),panel=mapNode?.closest(".phc-alert-map-panel");
+    if(panel){panel.outerHTML=alertMapPanelMarkup(id,STATE.alertFacilities,title);renderAlertMap(id,STATE.alertFacilities);}
+  }catch(_){}
 }
 function adminIcon(name) {
   const paths = {
@@ -345,7 +354,7 @@ async function dashboardView() {
       else root.innerHTML='<section class="panel setup-panel"><h2>Access denied</h2><p class="sub">This account is not authorised to use system administration.</p><button class="btn sec" id="logoutButton" type="button">Sign out</button></section>';
       return;
     }
-    const [data,alerts]=await Promise.all([api("/api/admin/overview"),api("/api/alerts")]);STATE.admin=data;STATE.alertFacilities=alerts.facilities||[];root.innerHTML=adminWorkspace(data);renderAlertMap("adminAlertMap",STATE.alertFacilities);
+    const [data,alerts]=await Promise.all([api("/api/admin/overview"),api("/api/alerts")]);STATE.admin=data;STATE.alertFacilities=alerts.facilities||[];root.innerHTML=adminWorkspace(data);renderAlertMap("adminAlertMap",STATE.alertFacilities);clearInterval(window.phcAdminAlertPoll);window.phcAdminAlertPoll=setInterval(()=>refreshAlertMap("adminAlertMap","Yobe State PHC Alert Map"),10000);
   } catch(error) {
     if(error.message==="Authentication required.") window.location.replace("index.html");
     else root.innerHTML='<section class="panel"><h2>Administration unavailable</h2><p class="sub">'+escapeHtml(error.message)+'</p><button class="btn sec" onclick="dashboardView()">Retry</button></section>';
