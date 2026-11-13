@@ -59,7 +59,7 @@ async function canAccessPatientNetwork(client, user, patientId) {
 }
 
 function validatePatient(body) {
-  const fullName = String(body.fullName || '').trim().replace(/\\s+/g, ' ');
+  const fullName = String(body.fullName || '').trim().replace(/\s+/g, ' ');
   const ageYears = body.ageYears === '' || body.ageYears === null || body.ageYears === undefined ? null : Number(body.ageYears);
   const sex = body.sex ? String(body.sex) : null;
   const phone = body.phone ? String(body.phone).trim() : null;
@@ -90,7 +90,7 @@ async function verifyPatientPin(client, patientId, pin) {
     return { error: 'Wrong PIN. Access is locked for 5 minutes.', status: 429 };
   }
   if (!patient.pin_hash) return { error: 'This older patient record needs a PIN set by its registered PHC.', status: 409 };
-  if (!/^\\d{4}$/.test(String(pin || '')) || !(await bcrypt.compare(String(pin), patient.pin_hash))) {
+  if (!/^\d{4}$/.test(String(pin || '')) || !(await bcrypt.compare(String(pin), patient.pin_hash))) {
     const attempts = patient.pin_locked_until ? 0 : Number(patient.pin_failed_attempts || 0);
     const nextAttempts = attempts + 1;
     if (nextAttempts >= 3) {
@@ -159,7 +159,7 @@ router.post('/', async (req, res, next) => {
     if (duplicate.rowCount) {
       await client.query('COMMIT');
       const qrCode = await QRCode.toDataURL(duplicate.rows[0].patient_code, { errorCorrectionLevel: 'M', margin: 1, width: 240 });
-      return res.json({ duplicate: true, patient: duplicate.rows[0], patientPin: /^\\d{4}$/.test(String(req.body.patientPin||'')) ? String(req.body.patientPin) : null, qrCode });
+      return res.json({ duplicate: true, patient: duplicate.rows[0], patientPin: /^\d{4}$/.test(String(req.body.patientPin||'')) ? String(req.body.patientPin) : null, qrCode });
     }
     const facility = await client.query(
       `SELECT f.code,s.name AS state_name FROM facilities f
@@ -172,10 +172,10 @@ router.post('/', async (req, res, next) => {
       return res.status(404).json({ error: 'Facility not found.' });
     }
     const count = await client.query('SELECT COUNT(*)::int AS total FROM patients WHERE facility_id=$1', [facilityId]);
-    const stateCode = /yobe/i.test(facility.rows[0].state_name) ? 'YB' : facility.rows[0].state_name.split(/\\s+/).map(part => part[0]).join('').slice(0,2).toUpperCase();
+    const stateCode = /yobe/i.test(facility.rows[0].state_name) ? 'YB' : facility.rows[0].state_name.split(/\s+/).map(part => part[0]).join('').slice(0,2).toUpperCase();
     const facilityCode = String(facility.rows[0].code).replace(/[^A-Za-z0-9-]/g,'').toUpperCase().replace(/^YB-/,'');
     const patientCode = stateCode + '-' + facilityCode + '-' + String(count.rows[0].total + 1).padStart(5,'0');
-    const pin = /^\\d{4}$/.test(String(req.body.patientPin||'')) ? String(req.body.patientPin) : String(randomInt(1000, 10000));
+    const pin = /^\d{4}$/.test(String(req.body.patientPin||'')) ? String(req.body.patientPin) : String(randomInt(1000, 10000));
     const pinHash = await bcrypt.hash(pin, 12);
     const created = await client.query(
       `INSERT INTO patients
@@ -207,7 +207,7 @@ router.post('/lookup', async (req, res, next) => {
   try {
     const patientCode = String(req.body.patientCode || '').trim().toUpperCase();
     const pin = String(req.body.pin || '');
-    if (!patientCode || !/^\\d{4}$/.test(pin)) return res.status(400).json({ error: 'Patient ID and 4-digit PIN are required.' });
+    if (!patientCode || !/^\d{4}$/.test(pin)) return res.status(400).json({ error: 'Patient ID and 4-digit PIN are required.' });
     await client.query('BEGIN');
     const found = await client.query('SELECT id FROM patients WHERE patient_code=$1', [patientCode]);
     if (!found.rowCount) {
