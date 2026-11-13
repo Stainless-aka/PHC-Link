@@ -46,6 +46,12 @@ async function flushOfflineQueue(){
   writeOutbox(remaining);updateSyncIndicator();
   if(queue.length>remaining.length)notify("Offline actions synchronised successfully.");
 }
+function showPatientCard(result){
+  const patient=result.patient||{},pin=String(result.patientPin||"");
+  const modal=document.createElement("div");modal.className="patient-card-modal";
+  modal.innerHTML='<section class="patient-card-print"><div class="patient-card-brand">PHC LINK · PATIENT CARD</div><h2>'+escapeHtml(patient.patient_code)+'</h2><p>'+escapeHtml(patient.age_years??"—")+' years · '+escapeHtml(patient.sex||"")+'</p><img class="patient-card-qr" src="'+escapeHtml(result.qrCode||"")+'" alt="Patient QR code"><p class="patient-card-warning">Keep this PIN secret. Do not give it to strangers.</p><div class="patient-card-pin">PIN: <strong>'+escapeHtml(pin)+'</strong></div><div class="patient-card-actions"><button type="button" class="btn sec" data-print-patient-card>Print card</button><button type="button" class="btn" data-close-patient-card>Done</button></div></section>';
+  document.body.appendChild(modal);
+}
 function notify(message, error=false) {
   const toast=document.getElementById("toast");
   if(!toast) return;
@@ -369,12 +375,27 @@ async function handleSubmit(event) {
   if(form.id==="patientForm"){
     event.preventDefault();
     const d=formData(form);
-    const payload={operationId:crypto.randomUUID(),facilityId:STATE.facilityId,fullName:d.patientFullName,dateOfBirth:d.patientDateOfBirth||null,sex:d.patientSex||null,phone:d.patientPhone||null};
+    const payload={operationId:crypto.randomUUID(),facilityId:STATE.facilityId,fullName:d.patientFullName,ageYears:Number(d.patientAge),sex:d.patientSex,phone:d.patientPhone||null,nextOfKinName:d.nextOfKinName||null,nextOfKinPhone:d.nextOfKinPhone||null,bloodGroup:d.bloodGroup||null,knownConditions:d.knownConditions||null,allergies:d.allergies||null};
     try{
       const result=await api("/api/patients",{method:"POST",body:JSON.stringify(payload)});
-      notify("Patient registered: "+result.patient.patient_code);await facilityWorkspace();
+      STATE.patientSearchResults=[];STATE.openPatient=null;await facilityWorkspace();showPatientCard(result);
     }catch(error){if(queueOfflineAction("/api/patients",payload,error))notify("Saved Offline — Will Send When Network Comes");else notify(error.message,true);}
     return;
+  }
+  if(form.id==="patientSearchForm"){
+    event.preventDefault();const d=formData(form);
+    try{const result=await api("/api/patients/search?q="+encodeURIComponent(d.patientSearchQuery));STATE.patientSearchResults=result.patients||[];await facilityWorkspace();}
+    catch(error){notify(error.message,true);}return;
+  }
+  if(form.id==="patientLookupForm"){
+    event.preventDefault();const d=formData(form);
+    try{const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:d.lookupPatientCode,pin:d.lookupPatientPin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];STATE.openPatientPin=d.lookupPatientPin;await facilityWorkspace();}
+    catch(error){notify(error.message,true);}return;
+  }
+  if(form.id==="patientVisitForm"){
+    event.preventDefault();const d=formData(form);
+    try{await api("/api/patients/"+encodeURIComponent(d.patientId)+"/visits",{method:"POST",body:JSON.stringify(d)});const result=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:STATE.openPatient.patient_code,pin:d.pin})});STATE.openPatient=result.patient;STATE.openPatientVisits=result.visits||[];notify("Visit saved.");await facilityWorkspace();}
+    catch(error){notify(error.message,true);}return;
   }
   if(form.id==="patientEditForm"){
     event.preventDefault();
@@ -403,6 +424,9 @@ async function handleSubmit(event) {
 }
 document.addEventListener("submit",handleSubmit);
 document.addEventListener("click",event=>{
+  const lookupCode=event.target.closest("[data-lookup-code]");
+  if(lookupCode){const input=document.getElementById("lookupPatientCode");if(input){input.value=lookupCode.dataset.lookupCode;input.focus();}return;}
+  if(event.target.closest("[data-close-patient-record]")){STATE.openPatient=null;STATE.openPatientVisits=[];STATE.openPatientPin=null;facilityWorkspace();return;}
   const switcher=event.target.closest("[data-auth-view]");
   if(switcher){document.getElementById("root").innerHTML=switcher.dataset.authView==="signup"?signupView():loginView();return;}
   const toggle=event.target.closest("[data-toggle-password]");
