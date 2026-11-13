@@ -55,6 +55,7 @@ app.get('/api/health', async (req, res, next) => {
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/signup', loginLimiter);
+app.use('/api/alert', rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false }));
 app.use('/api/setup', setupRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
