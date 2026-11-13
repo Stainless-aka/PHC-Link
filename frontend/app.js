@@ -278,7 +278,7 @@ async function facilityWorkspace() {
     }
     if(STATE.offlineMode)content='<div class="offline-mode-banner">Offline access · Showing saved data. New records remain pending until you reconnect.</div>'+content;
     content+='</section>';
-    const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"]]:(STATE.user.role==="lga_officer"?[["home","LGA overview","facility.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["maternity","Maternity / ANC","maternity.html"],["ussd","USSD","ussd.html"]]);
+    const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"],["maternity","Maternity / ANC","maternity.html"]]:(STATE.user.role==="lga_officer"?[["home","LGA overview","facility.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["maternity","Maternity / ANC","maternity.html"],["ussd","USSD","ussd.html"]]);
     root.innerHTML='<div class="stage"><div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+((STATE.user.role==="clinician"||STATE.user.canRespondEmergency)?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'<button class="btn sec sm" data-language-switch type="button">English | Hausa</button><button class="btn sec sm" id="staffLogout" type="button">Sign out</button></div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div><div id="patientEditor" class="patient-editor" hidden><section class="patient-editor-card" role="dialog" aria-modal="true" aria-labelledby="patientEditorTitle"><div class="panel-head"><div><h3 id="patientEditorTitle">Edit patient details</h3><p>Update the selected patient record.</p></div><button class="btn sec sm" type="button" data-close-patient-editor>Close</button></div><form id="patientEditForm" class="admin-form"><input type="hidden" name="patientId" id="editPatientId">'+field("Patient full name","editPatientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","editPatientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","editPatientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","editPatientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<div class="patient-editor-actions"><button class="btn sec" type="button" data-close-patient-editor>Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>';
     applyFacilityLanguage();if(STATE.user.role==="lga_officer"){renderAlertMap("lgaAlertMap",STATE.alertFacilities||[]);clearInterval(window.phcLgaAlertPoll);window.phcLgaAlertPoll=setInterval(()=>refreshAlertMap("lgaAlertMap","LGA PHC Alert Map"),10000);}updateSyncIndicator();flushOfflineQueue();
     clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),3000);
@@ -611,6 +611,43 @@ function rootAuthLogin(){const root=document.getElementById("root");if(root)root
 async function handleSubmit(event) {
   const form=event.target; if(!(form instanceof HTMLFormElement))return;
   if(form.id==="healthAssistantForm"){event.preventDefault();const d=formData(form);await askHealthAssistant(d.question);form.reset();return;}
+  const ancRoutes={
+    ancRegistrationForm:()=>({path:"/api/anc/registrations",payload:{...d,facilityId:STATE.facilityId}}),
+    ancVisitForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/visits",payload:d}),
+    ancTestForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/tests",payload:d}),
+    ancRiskForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/risks",payload:d}),
+    ancMedicationForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/medications",payload:d}),
+    ancAppointmentForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/appointments",payload:d}),
+    ancDeliveryForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/delivery",payload:d}),
+    ancPostnatalForm:()=>({path:"/api/anc/"+encodeURIComponent(d.pregnancyId)+"/postnatal",payload:d})
+  };
+  if(ancRoutes[form.id]){
+    event.preventDefault();
+    if(form.dataset.submitting==="true")return;
+    form.dataset.submitting="true";
+    const buttons=[...form.querySelectorAll('button[type="submit"]')];
+    buttons.forEach(b=>{b.disabled=true;b.dataset.label=b.textContent;b.textContent="Saving…";});
+    const d=formData(form),route=ancRoutes[form.id]();
+    const payload={...route.payload,operationId:form.dataset.operationId||(form.dataset.operationId=crypto.randomUUID())};
+    try{
+      await api(route.path,{method:"POST",body:JSON.stringify(payload)});
+      notify("Antenatal record saved.");
+      if(form.id==="ancRegistrationForm")STATE.openAncPregnancyId=null;
+      await facilityWorkspace();
+    }catch(error){
+      if(queueOfflineAction(route.path,payload,error)){
+        notify("Saved offline. This ANC entry is pending synchronisation.");
+        form.reset();delete form.dataset.operationId;form.dataset.submitting="false";
+        buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.label||"Save";});
+        updateSyncIndicator();
+      }else{
+        form.dataset.submitting="false";
+        buttons.forEach(b=>{b.disabled=false;b.textContent=b.dataset.label||"Save";});
+        notify(error.message,true);
+      }
+    }
+    return;
+  }
   const routes={
     stateForm:["/api/admin/states",d=>({name:d.name,code:d.code||null})],
     lgaForm:["/api/admin/lgas",d=>d],
@@ -750,6 +787,12 @@ async function handleSubmit(event) {
 }
 document.addEventListener("submit",handleSubmit);
 document.addEventListener("click",async event=>{
+  const openAnc=event.target.closest("[data-open-anc]");
+  if(openAnc){STATE.openAncPregnancyId=openAnc.dataset.openAnc;try{STATE.openAncDetail=await api("/api/anc/"+encodeURIComponent(STATE.openAncPregnancyId));await facilityWorkspace();}catch(error){notify(error.message,true);}return;}
+  if(event.target.closest("[data-close-anc]")){STATE.openAncPregnancyId=null;STATE.openAncDetail=null;facilityWorkspace();return;}
+  if(event.target.closest("[data-print-anc]")){window.print();return;}
+  const reviewAnc=event.target.closest("[data-review-anc-risk]");
+  if(reviewAnc){try{await api("/api/anc/"+encodeURIComponent(STATE.openAncPregnancyId)+"/risks/"+encodeURIComponent(reviewAnc.dataset.reviewAncRisk),{method:"PATCH",body:JSON.stringify({status:reviewAnc.dataset.riskStatus||"reviewed"})});STATE.openAncDetail=await api("/api/anc/"+encodeURIComponent(STATE.openAncPregnancyId));notify("Risk flag review updated.");facilityWorkspace();}catch(error){notify(error.message,true);}return;}
   const healthQuestion=event.target.closest("[data-health-question]");if(healthQuestion){askHealthAssistant(healthQuestion.dataset.healthQuestion);return;}
   if(event.target.closest("[data-close-patient-card]")){event.target.closest(".patient-card-modal")?.remove();return;}
   if(event.target.closest("[data-print-patient-card]")){window.print();return;}
