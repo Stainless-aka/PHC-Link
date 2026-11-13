@@ -622,3 +622,9 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .phc-install-button:hover{background:#0d586f}
 @media(max-width:520px){.top{gap:10px}.phc-install-button{min-height:36px;padding:0 11px;font-size:12px}}
 @media(display-mode:standalone){.phc-install-button{display:none}}
+
+/* Installable PWA control */
+.pwa-install-btn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 14px;border:1px solid #c9dce2;border-radius:8px;background:#eaf4f6;color:#14566a;font-size:12px;font-weight:700;white-space:nowrap}
+.pwa-install-btn:hover{background:#dceef1}
+.pwa-install-btn[hidden]{display:none!important}
+@media(max-width:480px){.top{gap:8px}.pwa-install-btn{min-height:35px;padding:0 10px;font-size:11px}}
