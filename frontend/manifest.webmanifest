@@ -1,0 +1,27 @@
+{
+  "id": "./",
+  "name": "PHC Link — Primary Healthcare Operations",
+  "short_name": "PHC Link",
+  "description": "Offline-first primary healthcare operations, patient records and referrals for PHC teams.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#116b86",
+  "categories": ["medical", "health", "productivity"],
+  "icons": [
+    {
+      "src": "icons/phc-link.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/phc-link.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
