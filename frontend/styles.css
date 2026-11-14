@@ -1016,3 +1016,33 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
  .admin-network-record-info{min-width:0}
  #adminNetworkManagement .admin-health-tip-actions{width:auto;flex:none}
 }
+
+
+/* Compact, single-instance network management */
+#adminNetworkManagement{scroll-margin-top:130px}
+#adminNetworkManagement .admin-network-heading{margin-bottom:14px}
+#adminNetworkManagement .admin-network-heading-line{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}
+#adminNetworkManagement .admin-network-heading-line .eyebrow{margin:0}
+#adminNetworkManagement .admin-network-heading-line h3{margin:0;font-size:18px}
+#adminNetworkManagement .admin-network-heading p{margin:6px 0 0}
+#adminNetworkManagement .admin-network-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+#adminNetworkManagement .admin-network-group{min-width:0;padding:15px}
+#adminNetworkManagement .admin-network-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:2px}
+#adminNetworkManagement .admin-network-group-head h3{margin:0;font-size:14px}
+#adminNetworkManagement .admin-network-group-head>span{font-size:11px;color:var(--muted);background:var(--surface-2,var(--line));border-radius:20px;padding:3px 8px}
+#adminNetworkManagement .admin-network-record{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+#adminNetworkManagement .admin-network-record:last-child{border-bottom:0}
+#adminNetworkManagement .admin-network-record-info{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;min-width:0;flex:1}
+#adminNetworkManagement .admin-network-record-info strong{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+#adminNetworkManagement .admin-network-record-info span{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+#adminNetworkManagement .admin-health-tip-actions{display:flex;align-items:center;gap:5px;flex:none}
+#adminNetworkManagement .admin-health-tip-actions .btn{padding:6px 9px;min-height:30px;font-size:11px}
+#adminNetworkManagement .admin-network-empty{font-size:12px;color:var(--muted);margin:12px 0 3px}
+@media(max-width:900px){#adminNetworkManagement .admin-network-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){
+ #adminNetworkManagement .admin-network-grid{grid-template-columns:1fr}
+ #adminNetworkManagement .admin-network-group{padding:12px}
+ #adminNetworkManagement .admin-network-record{gap:8px}
+ #adminNetworkManagement .admin-network-record-info{display:block}
+ #adminNetworkManagement .admin-network-record-info span{display:block;margin-top:2px}
+}
