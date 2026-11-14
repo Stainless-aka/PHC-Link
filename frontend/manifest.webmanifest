@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "PHC Link — Primary Healthcare Operations",
-  "short_name": "PHC Link",
+  "name": "Theos Lafiya — Primary Healthcare Operations",
+  "short_name": "Theos Lafiya",
   "description": "Offline-first primary healthcare operations, patient records and referrals for PHC teams.",
   "start_url": "./index.html",
   "scope": "./",
