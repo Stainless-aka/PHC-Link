@@ -57,6 +57,39 @@ router.get('/facilities/:facilityId/patients', async (req,res,next) => {
   } catch(error){next(error);}
 });
 
+
+router.patch('/patients/:patientId',async(req,res,next)=>{
+  try{
+    const fullName=String(req.body.fullName||'').trim().replace(/\s+/g,' ');
+    const ageYears=req.body.ageYears===null||req.body.ageYears===''||req.body.ageYears===undefined?null:Number(req.body.ageYears);
+    const sex=String(req.body.sex||'').trim().toLowerCase();
+    const phone=req.body.phone===null||req.body.phone===undefined||String(req.body.phone).trim()===''?null:String(req.body.phone).trim();
+    if(fullName.length<2||fullName.length>160)return res.status(400).json({error:'Enter a valid patient name.'});
+    if(ageYears!==null&&(!Number.isInteger(ageYears)||ageYears<0||ageYears>120))return res.status(400).json({error:'Age must be between 0 and 120.'});
+    if(!['female','male','unknown'].includes(sex))return res.status(400).json({error:'Sex must be female, male or unknown.'});
+    if(phone&&phone.length>30)return res.status(400).json({error:'Phone number is too long.'});
+    const result=await pool.query('UPDATE patients SET full_name=$1,age_years=$2,sex=$3,phone=$4 WHERE id=$5 RETURNING id,patient_code,full_name,age_years,sex,phone,created_at',[fullName,ageYears,sex,phone,req.params.patientId]);
+    if(!result.rowCount)return res.status(404).json({error:'Patient record not found.'});
+    await pool.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,'PATIENT_UPDATED','patient',$2,$3)",[req.session.user.id,req.params.patientId,JSON.stringify({patientCode:result.rows[0].patient_code})]);
+    res.json({patient:result.rows[0]});
+  }catch(error){next(error);}
+});
+router.delete('/patients/:patientId',async(req,res,next)=>{
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const found=await client.query('SELECT id,patient_code FROM patients WHERE id=$1 FOR UPDATE',[req.params.patientId]);
+    if(!found.rowCount){await client.query('ROLLBACK');return res.status(404).json({error:'Patient record not found.'});}
+    await client.query('DELETE FROM patients WHERE id=$1',[req.params.patientId]);
+    await client.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,'PATIENT_DELETED','patient',$2,$3)",[req.session.user.id,req.params.patientId,JSON.stringify({patientCode:found.rows[0].patient_code})]);
+    await client.query('COMMIT');res.json({success:true});
+  }catch(error){
+    await client.query('ROLLBACK').catch(()=>{});
+    if(error.code==='23503')return res.status(409).json({error:'This patient has linked clinical records. The record cannot be deleted without preserving or safely archiving those records.'});
+    next(error);
+  }finally{client.release();}
+});
+
 router.post('/states', async (req,res,next) => {
   try {
     const name=String(req.body.name||'').trim();
