@@ -592,10 +592,12 @@ function immunizationScheduleAdminPanel(data){
 }
 
 function adminNetworkManagement(data){
- const row=(kind,x,extra="")=>'<div class="admin-health-tip-row admin-network-record"><div class="admin-network-record-info"><strong>'+escapeHtml(x.name)+'</strong><small>'+escapeHtml(extra)+'</small></div><div class="admin-health-tip-actions"><button class="btn sec sm" type="button" data-edit-network="'+kind+'" data-id="'+escapeHtml(x.id)+'" data-name="'+escapeHtml(x.name)+'" data-code="'+escapeHtml(x.code||'')+'">Edit</button><button class="btn danger sm" type="button" data-delete-network="'+kind+'" data-id="'+escapeHtml(x.id)+'">Delete</button></div></div>';
- return '<section id="adminNetworkManagement" class="admin-section"><div class="admin-section-heading"><div><span class="eyebrow">NETWORK MANAGEMENT</span><h3>Edit or remove network records</h3><p>Records with dependent clinical data cannot be deleted.</p></div></div><div class="admin-directory-grid"><section class="panel admin-panel"><h3>States</h3>'+(data.states||[]).map(x=>row("state",x,x.code||"")).join('')+'</section><section class="panel admin-panel"><h3>LGAs</h3>'+(data.lgas||[]).map(x=>row("lga",x,x.state_name||"")).join('')+'</section><section class="panel admin-panel"><h3>Facilities</h3>'+(data.facilities||[]).map(x=>row("facility",x,(x.code||"")+" · "+(x.lga_name||""))).join('')+'</section></div></section>';
+ const unique=rows=>{const seen=new Set();return (rows||[]).filter(x=>x&&x.id&&!seen.has(String(x.id))&&seen.add(String(x.id)));};
+ const row=(kind,x,extra="")=>'<div class="admin-network-record"><div class="admin-network-record-info"><strong>'+escapeHtml(x.name)+'</strong>'+(extra?'<span>'+escapeHtml(extra)+'</span>':'')+'</div><div class="admin-health-tip-actions"><button class="btn sec sm" type="button" data-edit-network="'+kind+'" data-id="'+escapeHtml(x.id)+'" data-name="'+escapeHtml(x.name)+'" data-code="'+escapeHtml(x.code||'')+'">Edit</button><button class="btn danger sm" type="button" data-delete-network="'+kind+'" data-id="'+escapeHtml(x.id)+'">Delete</button></div></div>';
+ const states=unique(data.states),lgas=unique(data.lgas),facilities=unique(data.facilities);
+ const group=(title,rows,kind,detail)=>'<section class="panel admin-panel admin-network-group"><div class="admin-network-group-head"><h3>'+title+'</h3><span>'+rows.length+'</span></div>'+(rows.length?rows.map(x=>row(kind,x,detail(x))).join(''):'<p class="admin-network-empty">No '+title.toLowerCase()+' registered.</p>')+'</section>';
+ return '<section id="adminNetworkManagement" class="admin-section"><div class="admin-section-heading admin-network-heading"><div class="admin-network-heading-line"><span class="eyebrow">NETWORK MANAGEMENT</span><h3>Edit or remove network records</h3></div><p>Records with dependent clinical data cannot be deleted.</p></div><div class="admin-directory-grid admin-network-grid">'+group("States",states,"state",x=>x.code||"")+group("LGAs",lgas,"lga",x=>x.state_name||"")+group("Facilities",facilities,"facility",x=>[x.code,x.lga_name].filter(Boolean).join(" · "))+'</div></section>';
 }
-
 
 
 function greetingForUser(user,fallback="there"){
