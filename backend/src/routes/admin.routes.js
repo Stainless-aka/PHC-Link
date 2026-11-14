@@ -36,6 +36,27 @@ router.get('/overview', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+router.get('/facilities/:facilityId/patients', async (req,res,next) => {
+  try {
+    const facilityId=String(req.params.facilityId||'').trim();
+    const page=Math.max(1,Number.parseInt(req.query.page,10)||1);
+    const limit=Math.min(100,Math.max(1,Number.parseInt(req.query.limit,10)||50));
+    const search=String(req.query.q||'').trim().slice(0,120);
+    const facility=await pool.query('SELECT id FROM facilities WHERE id=$1 AND is_active=TRUE',[facilityId]);
+    if(!facility.rowCount)return res.status(404).json({error:'Active facility not found.'});
+    const pattern='%'+search+'%';
+    const [count,patients]=await Promise.all([
+      pool.query(`SELECT COUNT(*)::int AS total FROM patients p WHERE p.facility_id=$1 AND ($2='' OR p.patient_code ILIKE $3 OR p.full_name ILIKE $3 OR COALESCE(p.phone,'') ILIKE $3)`,[facilityId,search,pattern]),
+      pool.query(`SELECT p.id,p.patient_code,p.full_name,p.age_years,p.sex,p.phone,p.created_at
+                  FROM patients p
+                  WHERE p.facility_id=$1 AND ($2='' OR p.patient_code ILIKE $3 OR p.full_name ILIKE $3 OR COALESCE(p.phone,'') ILIKE $3)
+                  ORDER BY p.created_at DESC LIMIT $4 OFFSET $5`,[facilityId,search,pattern,limit,(page-1)*limit])
+    ]);
+    const total=count.rows[0].total;
+    res.json({patients:patients.rows,total,page,limit,hasMore:page*limit<total});
+  } catch(error){next(error);}
+});
+
 router.post('/states', async (req,res,next) => {
   try {
     const name=String(req.body.name||'').trim();
