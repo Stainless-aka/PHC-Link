@@ -948,3 +948,53 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .workspace-section-heading .sub{margin:0}
 .workspace-section-icon{width:42px;height:42px;flex:0 0 42px;padding:9px;border-radius:13px;background:var(--soft,#eaf3f6);color:var(--primary,#116b86);fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 :root[data-theme="dark"] .workspace-section-icon{background:#193744;color:#8bd2e2}
+
+/* Theos Lafiya administration refinements */
+.admin-app{background:#f3f6f8}
+.admin-sidebar{background:linear-gradient(180deg,#102c3e 0%,#15394b 100%);border-right:1px solid #24485a}
+.admin-nav{gap:7px}
+.admin-nav a{min-height:45px;border:1px solid transparent}
+.admin-nav a.active{background:linear-gradient(90deg,#ffffff1c,#ffffff0a);border-color:#ffffff12;box-shadow:inset 3px 0 #54c9bd}
+.admin-topbar{position:sticky;top:0;z-index:20;box-shadow:0 3px 14px #17364a08}
+.admin-content{padding-top:30px}
+.admin-welcome{padding:25px 27px;border:1px solid #e4ecef;border-radius:15px;background:linear-gradient(115deg,#fff 0%,#f4faf9 100%);box-shadow:0 6px 24px #17364a08}
+.admin-welcome h2{font-size:29px}
+.admin-overview-metrics{display:grid;gap:14px}
+.admin-metric-group{padding:17px 18px 4px;border:1px solid #e4ecef;border-radius:13px;background:#fff;box-shadow:0 4px 16px #17364a06}
+.admin-metric-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
+.admin-metric-heading h3{margin:0;color:#263f4e;font:700 14px Manrope,sans-serif}
+.admin-metric-heading>span{color:#98a6ad;font-size:10px}
+.admin-metric-group .admin-kpis{margin-bottom:14px}
+.admin-kpi{border-radius:11px;transition:transform .16s ease,box-shadow .16s ease}
+.admin-kpi:hover{transform:translateY(-2px);box-shadow:0 8px 22px #17364a0d}
+.admin-section{scroll-margin-top:86px;margin-bottom:44px}
+.admin-section-heading{align-items:center}
+.admin-section-heading h3{font-size:20px}
+.admin-panel,.admin-table-panel{border-radius:12px}
+.admin-patient-directory-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.admin-patient-facility{min-width:0;border:1px solid #e3eaee;border-radius:12px;background:#fff;box-shadow:0 3px 14px #17364a06;overflow:hidden}
+.admin-patient-facility-head{display:flex;align-items:center;gap:11px;padding:15px}
+.admin-patient-facility-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:10px;background:#eaf5f3;color:#087f83}
+.admin-patient-facility-name{flex:1;min-width:0}
+.admin-patient-facility-name strong,.admin-patient-facility-name small{display:block;overflow:hidden;text-overflow:ellipsis}
+.admin-patient-facility-name strong{color:#263e4d;font-size:12px}
+.admin-patient-facility-name small{margin-top:3px;color:#82929c;font-size:10px}
+.admin-patient-count{white-space:nowrap;color:#183e4b;font:700 17px Manrope,sans-serif}
+.admin-patient-count small{display:block;color:#87969f;font:500 9px "DM Sans",sans-serif;text-align:right}
+.admin-view-patients{white-space:nowrap}
+.admin-patient-results{padding:0 14px 14px;border-top:1px solid #edf1f3}
+.admin-patient-results-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;color:#82919a;font-size:10px}
+.admin-text-button{padding:3px 0;border:0;background:none;color:#087f83;font-size:10px;font-weight:700}
+.admin-patient-table{max-height:360px;overflow:auto;border:1px solid #edf1f3;border-radius:8px}
+.admin-patient-table th{position:sticky;top:0;background:#f7fafb}
+.admin-patient-more{display:flex;justify-content:center;padding-top:12px}
+.admin-patient-facility:has(.admin-patient-results){grid-column:1/-1}
+:root[data-theme="dark"] .admin-welcome{background:linear-gradient(115deg,#172633,#1b3039);border-color:var(--line)}
+:root[data-theme="dark"] .admin-metric-group,:root[data-theme="dark"] .admin-patient-facility{background:#172633;border-color:var(--line)}
+:root[data-theme="dark"] .admin-metric-heading h3,:root[data-theme="dark"] .admin-patient-facility-name strong,:root[data-theme="dark"] .admin-patient-count{color:var(--ink)}
+:root[data-theme="dark"] .admin-patient-facility-icon{background:#193b3c;color:#76d3c7}
+:root[data-theme="dark"] .admin-patient-results{border-color:var(--line)}
+:root[data-theme="dark"] .admin-patient-table{border-color:var(--line)}
+:root[data-theme="dark"] .admin-patient-table th{background:#1d303d}
+@media(max-width:900px){.admin-sidebar{position:sticky;top:0;z-index:21;box-shadow:0 4px 15px #102a3a12}.admin-side-brand{padding-bottom:10px}.admin-nav{scrollbar-width:thin}.admin-nav a{flex:none}.admin-topbar{top:114px}}
+@media(max-width:650px){.admin-content{padding:16px 12px 26px}.admin-welcome{padding:18px}.admin-welcome h2{font-size:23px}.admin-metric-group{padding:14px 12px 3px}.admin-patient-directory-grid{grid-template-columns:1fr}.admin-patient-facility-head{flex-wrap:wrap}.admin-patient-facility-name{min-width:calc(100% - 60px)}.admin-patient-count{margin-left:auto}.admin-view-patients{margin-left:auto}.admin-patient-table{max-height:420px}.admin-section-heading h3{font-size:18px}}
