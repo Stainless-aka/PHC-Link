@@ -1,4 +1,4 @@
-# PHC Link
+# Theos Lafiya
 
 Offline-first primary healthcare stock and referral coordination platform.
 
@@ -43,10 +43,10 @@ The static PWA in `frontend/` is integrated with the API. Its local outbox store
 
 ## Account roles and professional designations
 
-PHC Link separates account permissions from a staff member's professional qualification.
+Theos Lafiya separates account permissions from a staff member's professional qualification.
 
 **Account roles** determine system access:
-- \`system_admin\`: manages the entire PHC Link network and user access.
+- \`system_admin\`: manages the entire Theos Lafiya network and user access.
 - \`state_admin\`: state-level administration.
 - \`lga_officer\`: LGA-level oversight.
 - \`health_worker\`: works within an assigned healthcare facility.
@@ -68,7 +68,7 @@ This is an initial development foundation, not a production-ready clinical syste
 
 1. Generate a private setup key locally with `openssl rand -hex 32`.
 2. In Render, open the `phc-link-api` service → **Environment** and add `BOOTSTRAP_SECRET` with that generated value. Save changes and wait for the service to restart.
-3. Open the PHC Link website and select **Administration**.
+3. Open the Theos Lafiya website and select **Administration**.
 4. Complete the first-time setup form with the same setup key, your administrator details, and the initial state and LGA.
 5. Sign in with the administrator email and password you created. The setup endpoint becomes permanently unavailable after the first user is created.
 
