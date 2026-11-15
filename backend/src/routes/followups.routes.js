@@ -49,7 +49,7 @@ router.get('/appointments', async (req, res, next) => {
       LEFT JOIN streak s ON s.patient_id=m.patient_id LEFT JOIN next_visit n ON n.patient_id=m.patient_id
       ORDER BY CASE WHEN COALESCE(s.consecutive_missed,0)>=2 THEN 0 ELSE 1 END,m.last_missed_date ASC
       LIMIT 300
-    `, [facilityId]); [facilityId]);
+    `, [facilityId]);
     res.json({ followUps: result.rows });
   } catch (e) { next(e); } finally { c.release(); }
 });
