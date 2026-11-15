@@ -40,7 +40,7 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[char]));
 }
 async function api(path, options={}) {
-  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&(["/api/auth/me","/api/facilities","/api/facilities/referral-destinations","/api/inventory/items","/api/inventory/balances","/api/patients","/api/referrals","/api/alerts","/api/health-tips","/api/health-assistant/knowledge"].includes(route)||route==="/api/immunization"||route.startsWith("/api/immunization/")||route==="/api/anc"||route.startsWith("/api/anc/"));
+  const method=String(options.method||"GET").toUpperCase(), cacheKey="phclink-cache:"+path, route=path.split("?")[0], cacheable=method==="GET"&&(["/api/auth/me","/api/facilities","/api/facilities/referral-destinations","/api/inventory/items","/api/inventory/balances","/api/patients","/api/referrals","/api/alerts","/api/health-tips","/api/health-assistant/knowledge"].includes(route)||route==="/api/immunization"||route.startsWith("/api/immunization/")||route==="/api/anc"||route.startsWith("/api/anc/")||route.startsWith("/api/follow-ups/"));
   if(STATE.offlineMode){
     if(method!=="GET")throw new Error("Network unavailable. Your action can be saved offline.");
     if(cacheable){try{const cached=localStorage.getItem(cacheKey);if(cached)return JSON.parse(cached);}catch(_){}}
