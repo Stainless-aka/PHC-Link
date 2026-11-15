@@ -7,8 +7,12 @@ const router = express.Router();
 // Public, read-only facility directory for the login-page locator.
 router.get('/directory', async (req, res, next) => {
  try {
-  const result = await pool.query(`SELECT f.id,f.name,f.code,f.address,f.ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE COALESCE(f.is_active,TRUE)=TRUE ORDER BY s.name,l.name,COALESCE(to_jsonb(f)->>'ward_name',to_jsonb(f)->>'ward'),f.name`);
-  res.set('Cache-Control','public, max-age=300, stale-while-revalidate=600');res.json({facilities:result.rows});
+  const [facilityResult,wardResult] = await Promise.all([
+   pool.query(`SELECT f.id,f.name,f.code,f.address,COALESCE(w.name,f.ward_name) AS ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id LEFT JOIN wards w ON w.id=f.ward_id WHERE COALESCE(f.is_active,TRUE)=TRUE ORDER BY s.name,l.name,COALESCE(w.name,f.ward_name),f.name`),
+   pool.query(`SELECT w.id,w.name AS ward_name,w.code,l.name AS lga_name,s.name AS state_name FROM wards w JOIN lgas l ON l.id=w.lga_id JOIN states s ON s.id=l.state_id WHERE s.name='Yobe State' ORDER BY l.name,w.name`)
+  ]);
+  res.set('Cache-Control','public, max-age=300, stale-while-revalidate=600');
+  res.json({facilities:facilityResult.rows,wards:wardResult.rows});
  } catch(error){next(error);}
 });
 
