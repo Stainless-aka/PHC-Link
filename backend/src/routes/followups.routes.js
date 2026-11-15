@@ -32,7 +32,7 @@ router.get('/appointments', async (req, res, next) => {
       FROM anc_appointments a JOIN anc_pregnancies p ON p.id=a.pregnancy_id
       WHERE a.facility_id=$1
       ON CONFLICT(operation_id) DO UPDATE SET appointment_date=EXCLUDED.appointment_date,
-        purpose=EXCLUDED.purpose,status=EXCLUDED.status,updated_at=NOW()
+        purpose=EXCLUDED.purpose,status=CASE WHEN patient_appointments.status IN ('completed','cancelled') THEN patient_appointments.status ELSE EXCLUDED.status END,updated_at=NOW()
     `, [facilityId]);
     await c.query(`
       INSERT INTO patient_appointments(facility_id,patient_id,appointment_type,appointment_date,purpose,status,operation_id)
