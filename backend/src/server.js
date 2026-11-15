@@ -17,6 +17,7 @@ const alertRoutes = require('./routes/alerts.routes');
 const healthRoutes = require('./routes/health.routes');
 const setupRoutes = require('./routes/setup.routes');
 const adminRoutes = require('./routes/admin.routes');
+const followUpRoutes = require('./routes/followups.routes');
 const { notFound, errorHandler } = require('./middleware/error-handler');
 
 const required = ['DATABASE_URL', 'SESSION_SECRET'];
@@ -64,6 +65,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/follow-ups', followUpRoutes);
 app.use('/api/referrals', referralRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/anc', ancRoutes);
