@@ -8,11 +8,14 @@ const router = express.Router();
 router.get('/directory', async (req, res, next) => {
  try {
   const [facilityResult,wardResult] = await Promise.all([
-   pool.query(`SELECT f.id,f.name,f.code,f.address,COALESCE(w.name,f.ward_name) AS ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id LEFT JOIN wards w ON w.id=f.ward_id WHERE COALESCE(f.is_active,TRUE)=TRUE ORDER BY s.name,l.name,COALESCE(w.name,f.ward_name),f.name`),
+   pool.query(`SELECT f.id,f.name,f.code,f.address,COALESCE(w.name,f.ward_name) AS ward_name,f.source_ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,f.location_verification_status,f.ward_mapping_status,f.directory_source,f.source_name,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id LEFT JOIN wards w ON w.id=f.ward_id WHERE COALESCE(f.is_active,TRUE)=TRUE ORDER BY s.name,l.name,COALESCE(w.name,f.ward_name),f.name`),
    pool.query(`SELECT w.id,w.name AS ward_name,w.code,l.name AS lga_name,s.name AS state_name FROM wards w JOIN lgas l ON l.id=w.lga_id JOIN states s ON s.id=l.state_id WHERE s.name='Yobe State' ORDER BY l.name,w.name`)
   ]);
   res.set('Cache-Control','public, max-age=300, stale-while-revalidate=600');
-  res.json({facilities:facilityResult.rows,wards:wardResult.rows});
+  const facilities=facilityResult.rows;
+  const yobeFacilities=facilities.filter(f=>f.state_name==='Yobe State');
+  const summary={yobeFacilities:yobeFacilities.length,wardMatched:yobeFacilities.filter(f=>f.ward_mapping_status==='matched').length,wardNeedsReview:yobeFacilities.filter(f=>f.ward_mapping_status==='needs_review').length,gpsVerified:yobeFacilities.filter(f=>f.location_verification_status==='verified'&&f.latitude!==null&&f.longitude!==null).length};
+  res.json({facilities,wards,summary,wardReviewFacilities:yobeFacilities.filter(f=>f.ward_mapping_status==='needs_review')});
  } catch(error){next(error);}
 });
 
@@ -31,7 +34,7 @@ router.get('/', async (req, res, next) => {
       where = `WHERE f.lga_id IN (SELECT lga_id FROM user_lga_access WHERE user_id = $1)`;
     }
     const result = await pool.query(
-      `SELECT f.id, f.name, f.code, f.address, f.latitude, f.longitude, f.coordinates_are_approximate,
+      `SELECT f.id, f.name, f.code, f.address, f.latitude, f.longitude, f.coordinates_are_approximate,f.location_verification_status,f.ward_mapping_status,f.source_ward_name,
               l.name AS lga_name, s.name AS state_name
        FROM facilities f JOIN lgas l ON l.id = f.lga_id
        JOIN states s ON s.id = l.state_id ${where}
