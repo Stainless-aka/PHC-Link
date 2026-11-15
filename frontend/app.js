@@ -76,7 +76,7 @@ function queueOfflineAction(path,payload,error,method="POST"){
   if(path==="/api/immunization/lots")return false;
   if(navigator.onLine&&!/Network unavailable/i.test(error?.message||""))return false;
   const isPatientEdit=path.startsWith("/api/patients/")&&!path.endsWith("/visits")&&path.split("/").length===4;
-  if(!["/api/inventory/movements","/api/patients","/api/referrals"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits"))&&!isPatientEdit&&!path.startsWith("/api/anc/")&&!path.startsWith("/api/immunization/"))return false;
+  if(!["/api/inventory/movements","/api/patients","/api/referrals","/api/follow-ups/appointments","/api/follow-ups/restock-requests"].includes(path)&&!(path.startsWith("/api/patients/")&&path.endsWith("/visits"))&&!isPatientEdit&&!path.startsWith("/api/anc/")&&!path.startsWith("/api/immunization/"))return false;
   const operationId=payload.operationId||crypto.randomUUID();
   const item={id:operationId,path,method:isPatientEdit?"PATCH":method,payload:{...payload,operationId},createdAt:new Date().toISOString()};
   const queue=readOutbox();if(!queue.some(x=>x.id===item.id))queue.push(item);if(!writeOutbox(queue))return false;updateSyncIndicator();return true;
@@ -90,7 +90,7 @@ async function flushOfflineQueue(){
     try{const synced=await api(queue[i].path,{method:queue[i].method,body:JSON.stringify(queue[i].payload)});if(queue[i].path==="/api/patients"&&synced.patientPin&&synced.qrCode)showPatientCard(synced);if(queue[i].path==="/api/anc/registrations"&&synced.patientPin&&synced.pregnancy)showPatientCard({patient:{patient_code:synced.pregnancy.patient_code,full_name:synced.pregnancy.full_name,age_years:synced.pregnancy.age_years},patientPin:synced.patientPin});if(queue[i].path.startsWith("/api/anc/")||(queue[i].path==="/api/referrals"&&STATE.page==="maternity"))ancSynced=true;if(queue[i].path.startsWith("/api/immunization/")){immunizationSynced=true;if(queue[i].path==="/api/immunization/children"&&synced.patientPin)showImmunizationRegistrationCard(synced);if(queue[i].path==="/api/immunization/cold-chain"&&synced.warning)notify(synced.warning,true);}if(queue[i].path.startsWith("/api/patients/")&&(queue[i].path.endsWith("/visits")||queue[i].method==="PATCH")){const payload=queue[i].payload;const record=await api("/api/patients/lookup",{method:"POST",body:JSON.stringify({patientCode:payload.patientCode,pin:payload.pin})});await saveOfflinePatientRecord(record.patient.patient_code,payload.pin,{patient:record.patient,visits:record.visits||[]});if(STATE.openPatient?.patient_code===record.patient.patient_code){STATE.openPatient=record.patient;STATE.openPatientVisits=record.visits||[];}patientVisitSynced=true;}}
     catch(error){remaining.push(...queue.slice(i));break;}
   }
-  writeOutbox(remaining);updateSyncIndicator();if((patientVisitSynced&&STATE.page==="patients")||(ancSynced&&STATE.page==="maternity")||(immunizationSynced&&STATE.page==="immunization"))facilityWorkspace();
+  writeOutbox(remaining);updateSyncIndicator();if((patientVisitSynced&&STATE.page==="patients")||(ancSynced&&STATE.page==="maternity")||(immunizationSynced&&STATE.page==="immunization")||queue.some(x=>x.path.startsWith("/api/follow-ups/")))facilityWorkspace();
   if(queue.length>remaining.length)notify("Offline actions synchronised successfully.");
 }
 function showPatientCard(result){
