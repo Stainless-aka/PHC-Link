@@ -40,7 +40,7 @@ router.get('/appointments', async (req, res, next) => {
           SELECT COALESCE(MIN(rn)-1, 999) FROM (
             SELECT ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY appointment_date DESC) rn, status
             FROM patient_appointments WHERE facility_id=$1 AND appointment_date<=CURRENT_DATE AND status IN ('missed','completed')
-          ) x WHERE x.status='completed'
+          ) x WHERE x.patient_id=ranked.patient_id AND x.status='completed'
         )
         GROUP BY patient_id
       ), next_visit AS (
