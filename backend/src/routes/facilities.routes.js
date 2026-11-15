@@ -13,6 +13,7 @@ router.get('/directory', async (req, res, next) => {
   ]);
   res.set('Cache-Control','public, max-age=300, stale-while-revalidate=600');
   const facilities=facilityResult.rows;
+  const wards=wardResult.rows;
   const yobeFacilities=facilities.filter(f=>f.state_name==='Yobe State');
   const summary={yobeFacilities:yobeFacilities.length,wardMatched:yobeFacilities.filter(f=>f.ward_mapping_status==='matched').length,wardNeedsReview:yobeFacilities.filter(f=>f.ward_mapping_status==='needs_review').length,gpsVerified:yobeFacilities.filter(f=>f.location_verification_status==='verified'&&f.latitude!==null&&f.longitude!==null).length};
   res.json({facilities,wards,summary,wardReviewFacilities:yobeFacilities.filter(f=>f.ward_mapping_status==='needs_review')});
