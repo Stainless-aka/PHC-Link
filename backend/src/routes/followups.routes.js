@@ -26,38 +26,30 @@ router.get('/appointments', async (req, res, next) => {
     await c.query("UPDATE patient_appointments SET status='missed', updated_at=NOW() WHERE facility_id=$1 AND status='scheduled' AND appointment_date<CURRENT_DATE", [facilityId]);
     const result = await c.query(`
       WITH missed AS (
-        SELECT patient_id, COUNT(*)::int AS missed_visits,
-          MAX(appointment_date) AS last_missed_date
-        FROM patient_appointments
-        WHERE facility_id=$1 AND status='missed'
-        GROUP BY patient_id
+        SELECT patient_id,COUNT(*)::int AS missed_visits,MAX(appointment_date) AS last_missed_date
+        FROM patient_appointments WHERE facility_id=$1 AND status='missed' GROUP BY patient_id
+      ), ranked AS (
+        SELECT patient_id,status,ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY appointment_date DESC,created_at DESC) rn
+        FROM patient_appointments WHERE facility_id=$1 AND appointment_date<=CURRENT_DATE AND status IN ('missed','completed')
       ), streak AS (
-        SELECT patient_id, COUNT(*)::int AS consecutive_missed
-        FROM (
-          SELECT patient_id, status, ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY appointment_date DESC) AS rn
-          FROM patient_appointments WHERE facility_id=$1 AND appointment_date<=CURRENT_DATE AND status IN ('missed','completed')
-        ) ranked WHERE status='missed' AND rn <= (
-          SELECT COALESCE(MIN(rn)-1, 999) FROM (
-            SELECT ROW_NUMBER() OVER(PARTITION BY patient_id ORDER BY appointment_date DESC) rn, status
-            FROM patient_appointments WHERE facility_id=$1 AND appointment_date<=CURRENT_DATE AND status IN ('missed','completed')
-          ) x WHERE x.patient_id=ranked.patient_id AND x.status='completed'
-        )
-        GROUP BY patient_id
+        SELECT r.patient_id,COUNT(*) FILTER(WHERE r.status='missed')::int consecutive_missed
+        FROM ranked r
+        WHERE r.rn<COALESCE((SELECT MIN(r2.rn) FROM ranked r2 WHERE r2.patient_id=r.patient_id AND r2.status='completed'),999)
+        GROUP BY r.patient_id
       ), next_visit AS (
-        SELECT DISTINCT ON(patient_id) patient_id, appointment_date, appointment_type, purpose
+        SELECT DISTINCT ON(patient_id) patient_id,appointment_date,appointment_type,purpose
         FROM patient_appointments WHERE facility_id=$1 AND status='scheduled' AND appointment_date>=CURRENT_DATE
-        ORDER BY patient_id, appointment_date
+        ORDER BY patient_id,appointment_date
       )
-      SELECT p.id AS patient_id,p.patient_code,p.full_name,p.phone,
-        m.missed_visits,m.last_missed_date AS last_visit_date,
-        n.appointment_date AS next_visit_date,n.appointment_type,n.purpose,
-        CASE WHEN m.missed_visits>=2 THEN 'red' ELSE 'yellow' END AS risk
+      SELECT p.id AS patient_id,p.patient_code,p.full_name,p.phone,m.missed_visits,
+        m.last_missed_date AS last_visit_date,n.appointment_date AS next_visit_date,
+        n.appointment_type,n.purpose,
+        CASE WHEN COALESCE(s.consecutive_missed,0)>=2 THEN 'red' ELSE 'yellow' END AS risk
       FROM missed m JOIN patients p ON p.id=m.patient_id
-      LEFT JOIN next_visit n ON n.patient_id=p.id
-      WHERE m.missed_visits>0
-      ORDER BY CASE WHEN m.missed_visits>=2 THEN 0 ELSE 1 END, m.last_missed_date ASC
+      LEFT JOIN streak s ON s.patient_id=m.patient_id LEFT JOIN next_visit n ON n.patient_id=m.patient_id
+      ORDER BY CASE WHEN COALESCE(s.consecutive_missed,0)>=2 THEN 0 ELSE 1 END,m.last_missed_date ASC
       LIMIT 300
-    `, [facilityId]);
+    `, [facilityId]); [facilityId]);
     res.json({ followUps: result.rows });
   } catch (e) { next(e); } finally { c.release(); }
 });
