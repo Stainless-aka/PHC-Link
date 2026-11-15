@@ -7,7 +7,7 @@ const router = express.Router();
 // Public, read-only facility directory for the login-page locator.
 router.get('/directory', async (req, res, next) => {
  try {
-  const result = await pool.query(`SELECT f.id,f.name,f.code,f.address,f.latitude,f.longitude,f.coordinates_are_approximate,COALESCE(to_jsonb(f)->>'ward_name',to_jsonb(f)->>'ward') AS ward_name,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE COALESCE(f.is_active,TRUE)=TRUE ORDER BY s.name,l.name,COALESCE(to_jsonb(f)->>'ward_name',to_jsonb(f)->>'ward'),f.name`);
+  const result = await pool.query(`SELECT f.id,f.name,f.code,f.address,f.ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE COALESCE(f.is_active,TRUE)=TRUE ORDER BY s.name,l.name,COALESCE(to_jsonb(f)->>'ward_name',to_jsonb(f)->>'ward'),f.name`);
   res.set('Cache-Control','public, max-age=300, stale-while-revalidate=600');res.json({facilities:result.rows});
  } catch(error){next(error);}
 });
