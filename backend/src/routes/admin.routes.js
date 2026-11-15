@@ -330,4 +330,35 @@ router.delete('/health-tips/:tipId', async (req,res,next) => {
   } catch(error){next(error);}
 });
 
+router.get('/restock-requests',async(req,res,next)=>{
+  try{
+    const result=await pool.query(`
+      SELECT r.id,r.requested_quantity,r.urgency,r.status,r.notes,r.created_at,
+        f.name AS facility_name,l.name AS lga_name,s.name AS state_name,
+        i.name AS item_name,i.unit,u.full_name AS requested_by_name
+      FROM restock_requests r
+      JOIN facilities f ON f.id=r.facility_id
+      JOIN lgas l ON l.id=f.lga_id
+      JOIN states s ON s.id=l.state_id
+      JOIN inventory_items i ON i.id=r.item_id
+      LEFT JOIN users u ON u.id=r.requested_by
+      ORDER BY CASE WHEN r.status='pending' THEN 0 ELSE 1 END,
+        CASE WHEN r.urgency='urgent' THEN 0 ELSE 1 END,r.created_at DESC
+      LIMIT 300
+    `);
+    res.json({requests:result.rows});
+  }catch(error){next(error);}
+});
+router.patch('/restock-requests/:requestId',async(req,res,next)=>{
+  try{
+    const status=String(req.body.status||'');
+    if(!['approved','fulfilled','rejected'].includes(status))return res.status(400).json({error:'Choose approved, fulfilled or rejected.'});
+    const result=await pool.query('UPDATE restock_requests SET status=$1 WHERE id=$2 RETURNING id,status',[status,req.params.requestId]);
+    if(!result.rowCount)return res.status(404).json({error:'Restock request not found.'});
+    await pool.query('INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,$2,$3,$4,$5)',
+      [req.session.user.id,'RESTOCK_REQUEST_'+status.toUpperCase(),'restock_request',req.params.requestId,JSON.stringify({status})]);
+    res.json({request:result.rows[0]});
+  }catch(error){next(error);}
+});
+
 module.exports=router;
