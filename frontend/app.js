@@ -639,7 +639,7 @@ function adminRestockRequestsPanel(data){
 function initializeAdminPages(root){
  const content=root.querySelector(".admin-content");if(!content)return;
  const definitions=[
-  {key:"overview",title:"System overview",description:"A clear snapshot of healthcare network activity.",selectors:["#adminOverview",".admin-overview-metrics","#adminAlertMap","#adminRestockRequests"]},
+  {key:"overview",title:"System overview",description:"A clear snapshot of healthcare network activity.",selectors:["#adminOverview",".admin-overview-metrics","#adminAlertMap"]},
   {key:"network",title:"Network setup",description:"Create, review and maintain states, LGAs and healthcare facilities.",selectors:["#adminSetup","#adminNetworkManagement"]},
   {key:"staff",title:"Staff & access",description:"Manage accounts, professional designations, facility assignments and permissions.",selectors:["#adminUsers"]},
   {key:"referrals",title:"Referrals",description:"Review patient transfers submitted across registered facilities.",selectors:["#adminReferrals"]},
