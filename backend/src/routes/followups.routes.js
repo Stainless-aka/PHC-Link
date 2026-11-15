@@ -24,6 +24,30 @@ router.get('/appointments', async (req, res, next) => {
     const facilityId = String(req.query.facilityId || '');
     if (!facilityId || !(await canAccessFacility(c, req.session.user, facilityId))) return res.status(403).json({ error: 'You cannot access appointments for this facility.' });
     await c.query("UPDATE patient_appointments SET status='missed', updated_at=NOW() WHERE facility_id=$1 AND status='scheduled' AND appointment_date<CURRENT_DATE", [facilityId]);
+    await c.query("UPDATE anc_appointments SET status='missed' WHERE facility_id=$1 AND status='scheduled' AND appointment_date<CURRENT_DATE", [facilityId]);
+    await c.query(`
+      INSERT INTO patient_appointments(facility_id,patient_id,appointment_type,appointment_date,purpose,status,created_by,operation_id)
+      SELECT a.facility_id,p.patient_id,'anc',a.appointment_date,COALESCE(a.purpose,'Antenatal care follow-up'),a.status,a.created_by,
+        md5('anc-appointment:'||a.id::text)::uuid
+      FROM anc_appointments a JOIN anc_pregnancies p ON p.id=a.pregnancy_id
+      WHERE a.facility_id=$1
+      ON CONFLICT(operation_id) DO UPDATE SET appointment_date=EXCLUDED.appointment_date,
+        purpose=EXCLUDED.purpose,status=EXCLUDED.status,updated_at=NOW()
+    `, [facilityId]);
+    await c.query(`
+      INSERT INTO patient_appointments(facility_id,patient_id,appointment_type,appointment_date,purpose,status,operation_id)
+      SELECT r.facility_id,ic.patient_id,'immunization',r.due_date,
+        COALESCE(r.message,'Immunization follow-up'), 
+        CASE WHEN r.status='completed' THEN 'completed'
+             WHEN r.reminder_type='missed' OR r.due_date<CURRENT_DATE THEN 'missed'
+             ELSE 'scheduled' END,
+        md5('immunization-reminder:'||r.id::text)::uuid
+      FROM immunization_reminders r
+      JOIN immunization_children ic ON ic.id=r.child_id
+      WHERE r.facility_id=$1
+      ON CONFLICT(operation_id) DO UPDATE SET appointment_date=EXCLUDED.appointment_date,
+        purpose=EXCLUDED.purpose,status=EXCLUDED.status,updated_at=NOW()
+    `, [facilityId]);
     const result = await c.query(`
       WITH missed AS (
         SELECT patient_id,COUNT(*)::int AS missed_visits,MAX(appointment_date) AS last_missed_date
