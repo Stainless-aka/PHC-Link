@@ -11,7 +11,7 @@ router.get('/overview', async (req, res, next) => {
     const [states, lgas, facilities, users, items, referrals, referralRecords, patientRecords] = await Promise.all([
       pool.query('SELECT id, name, code FROM states ORDER BY name'),
       pool.query('SELECT l.id, l.name, l.state_id, s.name AS state_name FROM lgas l JOIN states s ON s.id=l.state_id ORDER BY s.name,l.name'),
-      pool.query('SELECT f.id,f.name,f.code,f.lga_id,f.address,f.ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
+      pool.query('SELECT f.id,f.name,f.code,f.lga_id,f.address,f.ward_name,f.latitude,f.longitude,f.coordinates_are_approximate,f.location_verification_status,f.ward_mapping_status,f.source_ward_name,f.directory_source,f.source_name,l.name AS lga_name,s.name AS state_name FROM facilities f JOIN lgas l ON l.id=f.lga_id JOIN states s ON s.id=l.state_id WHERE f.is_active=TRUE ORDER BY s.name,l.name,f.name'),
       pool.query(`SELECT u.id,u.full_name,u.email,u.role,u.designation,u.phone,u.is_active,u.can_respond_emergency, COALESCE(array_agg(DISTINCT f.name) FILTER (WHERE f.id IS NOT NULL), ARRAY[]::text[]) AS assigned_facilities FROM users u LEFT JOIN facility_users fu ON fu.user_id=u.id AND fu.is_active=TRUE LEFT JOIN facilities f ON f.id=fu.facility_id AND f.is_active=TRUE GROUP BY u.id ORDER BY u.full_name`),
       pool.query('SELECT id,name,category,unit,default_minimum_stock FROM inventory_items WHERE is_active=TRUE ORDER BY category,name'),
       pool.query('SELECT count(*)::int AS count FROM referrals'),
@@ -123,7 +123,9 @@ router.post('/facilities', async (req,res,next) => {
     const wardResult=wardName?await pool.query('SELECT id,name FROM wards WHERE lga_id=$1 AND lower(name)=lower($2)',[lgaId,wardName]):{rows:[]};
     if(wardName&&!wardResult.rowCount)return res.status(400).json({error:'Select a ward that belongs to the selected LGA.'});
     const wardId=wardResult.rows[0]?.id||null;
-    const result=await pool.query('INSERT INTO facilities(lga_id,name,code,address,ward_name,ward_id,latitude,longitude,coordinates_are_approximate) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',[lgaId,name,code,address,wardName,wardId,latitude,longitude,latitude===null?false:coordinatesAreApproximate]);
+    const locationStatus=latitude===null?'unverified':(coordinatesAreApproximate?'approximate':'verified');
+    const wardStatus=wardId?'matched':(wardName?'needs_review':'unverified');
+    const result=await pool.query('INSERT INTO facilities(lga_id,name,code,address,ward_name,ward_id,latitude,longitude,coordinates_are_approximate,location_verification_status,ward_mapping_status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',[lgaId,name,code,address,wardName,wardId,latitude,longitude,latitude===null?false:coordinatesAreApproximate,locationStatus,wardStatus]);
     res.status(201).json({facility:result.rows[0]});
   } catch(error){ if(error.code==='23503') return res.status(404).json({error:'LGA not found.'}); if(error.code==='23505') return res.status(409).json({error:'Facility code already exists.'}); next(error); }
 });
@@ -135,7 +137,7 @@ router.delete('/states/:id',async(req,res,next)=>{try{const r=await pool.query('
 router.patch('/lgas/:id',async(req,res,next)=>{try{const name=String(req.body.name||'').trim(),stateId=validId(req.body.stateId)?req.body.stateId:null;if(!name)return res.status(400).json({error:'LGA name is required.'});const r=await pool.query('UPDATE lgas SET name=$1,state_id=COALESCE($2,state_id) WHERE id=$3 RETURNING id,name,state_id',[name,stateId,req.params.id]);if(!r.rowCount)return res.status(404).json({error:'LGA not found.'});await pool.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,'LGA_UPDATED','lga',$2)",[req.session.user.id,req.params.id]);res.json({lga:r.rows[0]});}catch(e){if(e.code==='23503')return res.status(404).json({error:'Selected state not found.'});if(e.code==='23505')return res.status(409).json({error:'LGA already exists in that state.'});next(e);}});
 router.delete('/lgas/:id',async(req,res,next)=>{try{const r=await pool.query('DELETE FROM lgas WHERE id=$1 RETURNING id',[req.params.id]);if(!r.rowCount)return res.status(404).json({error:'LGA not found.'});await pool.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id) VALUES($1,'LGA_DELETED','lga',$2)",[req.session.user.id,req.params.id]);res.json({success:true});}catch(e){if(e.code==='23503')return res.status(409).json({error:'LGA still has facilities or linked records. Move or remove them first.'});next(e);}});
 router.patch('/facilities/:id',async(req,res,next)=>{try{
- const existing=await pool.query('SELECT id,name,code,lga_id,address,ward_name,ward_id,latitude,longitude,coordinates_are_approximate FROM facilities WHERE id=$1',[req.params.id]);
+ const existing=await pool.query('SELECT id,name,code,lga_id,address,ward_name,ward_id,latitude,longitude,coordinates_are_approximate,location_verification_status,ward_mapping_status FROM facilities WHERE id=$1',[req.params.id]);
  if(!existing.rowCount)return res.status(404).json({error:'Facility not found.'});
  const current=existing.rows[0];
  const name=req.body.name===undefined?current.name:String(req.body.name||'').trim();
@@ -152,7 +154,9 @@ router.patch('/facilities/:id',async(req,res,next)=>{try{
  if(!name||!code)return res.status(400).json({error:'Facility name and code are required.'});
  if((latitude===null)!==(longitude===null))return res.status(400).json({error:'Enter both latitude and longitude, or clear both.'});
  if(latitude!==null&&(!Number.isFinite(Number(latitude))||Number(latitude)<-90||Number(latitude)>90||!Number.isFinite(Number(longitude))||Number(longitude)<-180||Number(longitude)>180))return res.status(400).json({error:'Enter valid GPS coordinates.'});
- const result=await pool.query('UPDATE facilities SET name=$1,code=$2,lga_id=$3,address=$4,ward_name=$5,ward_id=$6,latitude=$7,longitude=$8,coordinates_are_approximate=$9 WHERE id=$10 RETURNING id,name,code,lga_id,address,ward_name,ward_id,latitude,longitude,coordinates_are_approximate',[name,code,lgaId,address,wardName,wardId,latitude,longitude,latitude===null?false:approximate,req.params.id]);
+ const locationStatus=latitude===null?'unverified':(approximate?'approximate':'verified');
+ const wardStatus=wardId?'matched':(wardName?'needs_review':'unverified');
+ const result=await pool.query('UPDATE facilities SET name=$1,code=$2,lga_id=$3,address=$4,ward_name=$5,ward_id=$6,latitude=$7,longitude=$8,coordinates_are_approximate=$9,location_verification_status=$10,ward_mapping_status=$11 WHERE id=$12 RETURNING id,name,code,lga_id,address,ward_name,ward_id,latitude,longitude,coordinates_are_approximate,location_verification_status,ward_mapping_status',[name,code,lgaId,address,wardName,wardId,latitude,longitude,latitude===null?false:approximate,locationStatus,wardStatus,req.params.id]);
  await pool.query("INSERT INTO audit_logs(actor_user_id,action,resource_type,resource_id,metadata) VALUES($1,'FACILITY_UPDATED','facility',$2,$3)",[req.session.user.id,req.params.id,JSON.stringify({wardName,latitude,longitude,coordinatesAreApproximate:latitude===null?false:approximate})]);
  res.json({facility:result.rows[0]});
 }catch(e){if(e.code==='23503')return res.status(404).json({error:'Selected LGA not found.'});if(e.code==='23505')return res.status(409).json({error:'Facility code already exists.'});next(e);}});
