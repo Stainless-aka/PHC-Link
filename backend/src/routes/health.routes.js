@@ -5,9 +5,9 @@ const { requireAuth, requireRole } = require('../middleware/require-auth');
 
 const router=express.Router();
 let lastNewsSyncAt=0;
-const FINAL_LINE='This is guidance only. Follow PHC protocol. If serious, send RED alert and refer now.';
+const FINAL_LINE='This is health information only, not a doctor. Please visit your nearest PHC if you feel sick.';
 const IDENTITY_LINE='I am a Health Assistant, for guidance only.';
-const RED_LINE='This is RED. Send RED alert now and refer.';
+const RED_LINE='This may be an emergency. Go to the nearest PHC immediately.';
 
 function decodeXml(value){
   return String(value||'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/\s+/g,' ').trim();
@@ -91,7 +91,7 @@ router.get('/health-tips',requireAuth,async(req,res,next)=>{
   }catch(error){next(error);}
 });
 
-router.get('/health-assistant/knowledge',requireAuth,requireRole('health_worker'),async(req,res,next)=>{
+router.get('/health-assistant/knowledge',requireAuth,requireRole('health_worker','clinician'),async(req,res,next)=>{
   try{
     const result=await pool.query(
       'SELECT topic_key,keywords,english_answer,hausa_answer FROM health_assistant_knowledge WHERE is_active=TRUE ORDER BY priority,topic_key'
@@ -121,7 +121,7 @@ router.post('/health-assistant',requireAuth,requireRole('health_worker'),async(r
           temperature:0.1,
           max_tokens:450,
           messages:[
-            {role:'system',content:'You are a Health Assistant, for guidance only. You are not a doctor or nurse. Give short simple steps for a Nigerian PHC worker. Never diagnose. Never prescribe exact drug doses. Never instruct surgery, injections or procedures beyond training. Tell the worker to follow PHC standing orders and ask a Clinician. If an emergency is described, your first line must be exactly: This is RED. Send RED alert now and refer. Maximum 5 short numbered steps. Respond in '+(language==='ha'?'simple Hausa':'simple English')+'. Always end exactly with: '+FINAL_LINE},
+            {role:'system',content:'You are a friendly public health information assistant for people in Nigeria. You are not a doctor. Use simple, short language suitable for low-literacy readers. Cover pregnancy, antenatal care, immunization, child health, malaria and nutrition. Never diagnose or prescribe medicines or doses. For emergencies, tell the person to go to the nearest PHC immediately. Maximum 4 short sentences. Respond in '+(language==='ha'?'simple Hausa':'simple English')+'. Always end exactly with: '+FINAL_LINE},
             {role:'user',content:question}
           ]
         }),signal:AbortSignal.timeout(15000)});
