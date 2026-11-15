@@ -1052,3 +1052,10 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .health-quick-questions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .health-quick-questions .btn{white-space:normal;text-align:left;min-height:42px}
 @media(max-width:600px){.health-quick-questions .btn{flex:1 1 100%;min-height:46px}}
+
+.health-assistant-launcher{margin:16px 0}
+.health-assistant-trigger{min-height:46px;display:inline-flex;align-items:center;gap:8px}
+.health-assistant-panel{margin-top:12px}
+.health-assistant-panel[hidden]{display:none}
+.health-assistant-panel .panel-head{align-items:flex-start}
+.health-assistant-panel .panel-head>button{flex:none}
