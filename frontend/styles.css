@@ -1046,3 +1046,9 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
  #adminNetworkManagement .admin-network-record-info{display:block}
  #adminNetworkManagement .admin-network-record-info span{display:block;margin-top:2px}
 }
+
+.nearest-phc-login-link{display:flex;align-items:center;justify-content:center;width:100%;margin-top:12px;text-decoration:none;min-height:46px}
+.health-chat-disclaimer{font-size:12px;line-height:1.5;color:var(--muted);margin:12px 0 0}
+.health-quick-questions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.health-quick-questions .btn{white-space:normal;text-align:left;min-height:42px}
+@media(max-width:600px){.health-quick-questions .btn{flex:1 1 100%;min-height:46px}}
