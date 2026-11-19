@@ -1190,3 +1190,13 @@ body[data-workspace="facility"] .health-tips-band .health-tip-card{
     width:100%;
   }
 }
+
+
+/* Keep the health tips carousel moving while the pointer is over it. */
+body[data-workspace="facility"] .health-tips-band .health-tips-track{
+  animation:health-tip-carousel calc(var(--tip-count) * 4.5s) linear infinite !important;
+  animation-play-state:running !important;
+}
+body[data-workspace="facility"] .health-tips-band .health-tips-carousel:hover .health-tips-track{
+  animation-play-state:running !important;
+}
