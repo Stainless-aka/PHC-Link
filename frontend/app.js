@@ -356,7 +356,7 @@ const sectionIcon=STATE.page==="maternity"?'<svg class="workspace-section-icon" 
     content+='</section>';
     const nav=STATE.user.role==="clinician"?[["patients","Patient records","patients.html"],["maternity","Maternity / ANC","maternity.html"]]:(STATE.user.role==="lga_officer"?[["home","LGA overview","facility.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"]]:[["home","Home","facility.html"],["stock","Stock","stock.html"],["ref","Referrals","referrals.html"],["patients","Patients","patients.html"],["maternity","Maternity / ANC","maternity.html"],["immunization","Immunization","immunization.html"],["ussd","USSD","ussd.html"]]);
     root.innerHTML='<div class="stage">'+(healthTipsMarkup?'<div class="health-tips-band">'+healthTipsMarkup+'</div>':'')+'<div class="screen-wrap"><header class="hdr"><div class="staff-identity"><span class="staff-designation-label">PROFESSIONAL DESIGNATION</span><strong class="staff-designation">'+escapeHtml(STATE.user.designation?STATE.user.designation.replace(/_/g," "):"Not specified")+'</strong></div><div class="facility-header-actions">'+((STATE.user.role==="clinician"||STATE.user.canRespondEmergency)?'<a class="btn sec sm" href="clinician.html">Clinical response desk</a>':'')+'</div></header><div class="net"><span id="apiStatus">Authenticated session</span><span id="networkIndicator"></span></div>'+(facilities.length>1?'<div class="panel"><label for="facilityPicker">Your facility</label><select id="facilityPicker">'+facilities.map(f=>'<option value="'+escapeHtml(f.id)+'" '+(f.id===selected.id?'selected':'')+'>'+escapeHtml(f.name)+'</option>').join("")+'</select></div>':'')+'<nav class="tabs" aria-label="Facility sections">'+nav.map(([key,label,url])=>'<a href="'+url+'"'+(STATE.page===key?' aria-current="page"':'')+'>'+iconSvg(key)+'<span>'+label+'</span></a>').join("")+'</nav><main class="body">'+content+'</main></div></div><div id="patientEditor" class="patient-editor" hidden><section class="patient-editor-card" role="dialog" aria-modal="true" aria-labelledby="patientEditorTitle"><div class="panel-head"><div><h3 id="patientEditorTitle">Edit patient details</h3><p>Update the selected patient record.</p></div><button class="btn sec sm" type="button" data-close-patient-editor>Close</button></div><form id="patientEditForm" class="admin-form"><input type="hidden" name="patientId" id="editPatientId">'+field("Patient full name","editPatientFullName","text",true,'maxlength="160" autocomplete="name"')+field("Date of birth (optional)","editPatientDateOfBirth","date",false,'max="'+new Date().toISOString().slice(0,10)+'"')+selectField("Sex (optional)","editPatientSex",'<option value="female">Female</option><option value="male">Male</option><option value="unknown">Unknown</option>',"Not recorded",false)+field("Phone number (optional)","editPatientPhone","tel",false,'maxlength="30" autocomplete="tel"')+'<div class="patient-editor-actions"><button class="btn sec" type="button" data-close-patient-editor>Cancel</button><button class="btn" type="submit">Save changes</button></div></form></section></div>';
-    applyFacilityLanguage();if(STATE.user.role==="health_worker"&&STATE.page==="home"){api("/api/health-tips").then(data=>{const latest=data.tips||[];STATE.healthTips=latest;localStorage.setItem("phclink-health-tips",JSON.stringify(latest));const band=document.querySelector(".health-tips-band");if(band)band.innerHTML=healthTipsTickerMarkup(latest);}).catch(()=>{});}if(STATE.user.role==="lga_officer"){renderAlertMap("lgaAlertMap",STATE.alertFacilities||[]);clearInterval(window.phcLgaAlertPoll);window.phcLgaAlertPoll=setInterval(()=>refreshAlertMap("lgaAlertMap","LGA PHC Alert Map"),10000);}updateSyncIndicator();flushOfflineQueue();
+    applyFacilityLanguage();if(STATE.user.role==="health_worker"&&STATE.page==="home"){startHealthTipsCarousel();}if(STATE.user.role==="health_worker"&&STATE.page==="home"){api("/api/health-tips").then(data=>{const latest=data.tips||[];STATE.healthTips=latest;localStorage.setItem("phclink-health-tips",JSON.stringify(latest));const band=document.querySelector(".health-tips-band");if(band){band.innerHTML=healthTipsTickerMarkup(latest);startHealthTipsCarousel();}}).catch(()=>{});}if(STATE.user.role==="lga_officer"){renderAlertMap("lgaAlertMap",STATE.alertFacilities||[]);clearInterval(window.phcLgaAlertPoll);window.phcLgaAlertPoll=setInterval(()=>refreshAlertMap("lgaAlertMap","LGA PHC Alert Map"),10000);}updateSyncIndicator();flushOfflineQueue();
     clearInterval(window.phcReferralPoll);if(["ref","home"].includes(STATE.page))window.phcReferralPoll=setInterval(()=>refreshFacilityReferrals(selected.id),3000);
   } catch(error) {
     if(error.message==="Authentication required."){STATE.user=null;window.location.replace("index.html");}
@@ -533,10 +533,27 @@ function healthTipsTickerMarkup(tips){
     const english=tip.english_text||tip.hausa_text;
     const hausa=tip.hausa_text||english;
     const visible=currentLanguage()==="ha"?hausa:english;
-    return '<article class="health-tip-card"><span class="health-tip-number">'+String(index+1).padStart(2,"0")+'</span><p data-en="'+escapeHtml(english)+'" data-ha="'+escapeHtml(hausa)+'">'+escapeHtml(visible)+'</p></article>';
+    return '<article class="health-tip-card'+(index===0?' is-active':'')+'" '+(index===0?'':'hidden')+'><span class="health-tip-number">'+String(index+1).padStart(2,"0")+'</span><p data-en="'+escapeHtml(english)+'" data-ha="'+escapeHtml(hausa)+'">'+escapeHtml(visible)+'</p></article>';
   });
-  const movingSlides=slides.length>1?slides.concat(slides):slides;
-  return '<section class="health-tips-panel" aria-label="Health tips"><div class="health-tips-heading"><div><span class="facility-kicker">PRACTICAL HEALTH GUIDANCE</span><h3 data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</h3></div><span class="health-tips-count">'+(rows.length||fallback.length)+' tips</span></div><div class="health-tips-carousel" aria-live="off"><div class="health-tips-track" style="--tip-count:'+slides.length+'">'+movingSlides.join("")+'</div></div><p class="health-tips-note">Follow approved facility protocols and refer patients when necessary.</p></section>';
+  return '<section class="health-tips-panel" aria-label="Health tips"><div class="health-tips-heading"><div><span class="facility-kicker">PRACTICAL HEALTH GUIDANCE</span><h3 data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</h3></div><span class="health-tips-count">'+selectedTips.length+' tips</span></div><div class="health-tips-carousel" aria-live="polite"><div class="health-tips-track">'+slides.join("")+'</div></div><p class="health-tips-note">Follow approved facility protocols and refer patients when necessary.</p></section>';
+}
+function startHealthTipsCarousel(){
+  const band=document.querySelector(".health-tips-band");
+  if(!band)return;
+  clearInterval(window.phcHealthTipsTimer);
+  const track=band.querySelector(".health-tips-track");
+  if(!track)return;
+  const cards=Array.from(track.querySelectorAll(".health-tip-card"));
+  if(cards.length<2)return;
+  let active=0;
+  cards.forEach((card,index)=>{card.hidden=index!==0;card.classList.toggle("is-active",index===0);});
+  window.phcHealthTipsTimer=setInterval(()=>{
+    cards[active].hidden=true;
+    cards[active].classList.remove("is-active");
+    active=(active+1)%cards.length;
+    cards[active].hidden=false;
+    cards[active].classList.add("is-active");
+  },4500);
 }
 function offlineHealthAnswer(question,language){
   const knowledge=STATE.healthKnowledge||[],q=String(question||"").toLowerCase();
