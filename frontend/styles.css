@@ -1200,3 +1200,21 @@ body[data-workspace="facility"] .health-tips-band .health-tips-track{
 body[data-workspace="facility"] .health-tips-band .health-tips-carousel:hover .health-tips-track{
   animation-play-state:running !important;
 }
+
+
+/* Health tips use one visible slide at a time; JavaScript advances every 4.5 seconds. */
+body[data-workspace="facility"] .health-tips-band .health-tips-track{
+  display:block;
+  width:100%;
+  animation:none !important;
+  transform:none !important;
+}
+body[data-workspace="facility"] .health-tips-band .health-tip-card{
+  display:flex;
+  width:100%;
+  min-height:104px;
+  box-sizing:border-box;
+}
+body[data-workspace="facility"] .health-tips-band .health-tip-card[hidden]{
+  display:none !important;
+}
