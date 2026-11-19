@@ -1141,3 +1141,17 @@ body[data-workspace="facility"] .tabs{
   body[data-workspace="facility"] .net{padding:4px 12px}
   body[data-workspace="facility"] .tabs{padding:5px 9px}
 }
+
+
+/* Facility brand and account actions share one horizontal top bar. */
+body[data-workspace="facility"] .top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+body[data-workspace="facility"] .top-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
+body[data-workspace="facility"] .top-actions .btn{white-space:nowrap}
+@media(max-width:520px){
+ body[data-workspace="facility"] .top{height:auto;min-height:66px;padding:10px 12px;gap:8px}
+ body[data-workspace="facility"] .brand{gap:8px;min-width:0}
+ body[data-workspace="facility"] .brand h1{font-size:15px}
+ body[data-workspace="facility"] .brand p{font-size:8px;letter-spacing:.04em}
+ body[data-workspace="facility"] .top-actions{gap:5px}
+ body[data-workspace="facility"] .top-actions .btn{padding:7px 8px;font-size:9px}
+}
