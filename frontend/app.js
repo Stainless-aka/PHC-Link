@@ -527,13 +527,15 @@ function healthTipsTickerMarkup(tips){
     {english_text:"Wash hands with soap and safe water before and after every patient contact.",hausa_text:"Wanke hannu da sabulu da ruwa mai tsafta kafin da bayan kula da mara lafiya."},
     {english_text:"For diarrhoea, give ORS according to PHC protocol.",hausa_text:"Idan gudawa ta faru, ba da ORS bisa tsarin PHC."}
   ];
-  const items=(rows.length?rows:fallback).slice(0,4).map((tip,index)=>{
+  const selectedTips=(rows.length?rows:fallback).slice(0,4);
+  const slides=selectedTips.map((tip,index)=>{
     const english=tip.english_text||tip.hausa_text;
     const hausa=tip.hausa_text||english;
     const visible=currentLanguage()==="ha"?hausa:english;
     return '<article class="health-tip-card"><span class="health-tip-number">'+String(index+1).padStart(2,"0")+'</span><p data-en="'+escapeHtml(english)+'" data-ha="'+escapeHtml(hausa)+'">'+escapeHtml(visible)+'</p></article>';
-  }).join("");
-  return '<section class="health-tips-panel" aria-label="Health tips"><div class="health-tips-heading"><div><span class="facility-kicker">PRACTICAL HEALTH GUIDANCE</span><h3 data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</h3></div><span class="health-tips-count">'+(rows.length||fallback.length)+' tips</span></div><div class="health-tips-grid">'+items+'</div><p class="health-tips-note">Follow approved facility protocols and refer patients when necessary.</p></section>';
+  });
+  const movingSlides=slides.length>1?slides.concat(slides):slides;
+  return '<section class="health-tips-panel" aria-label="Health tips"><div class="health-tips-heading"><div><span class="facility-kicker">PRACTICAL HEALTH GUIDANCE</span><h3 data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</h3></div><span class="health-tips-count">'+(rows.length||fallback.length)+' tips</span></div><div class="health-tips-carousel" aria-live="off"><div class="health-tips-track" style="--tip-count:'+slides.length+'">'+movingSlides.join("")+'</div></div><p class="health-tips-note">Follow approved facility protocols and refer patients when necessary.</p></section>';
 }
 function offlineHealthAnswer(question,language){
   const knowledge=STATE.healthKnowledge||[],q=String(question||"").toLowerCase();
