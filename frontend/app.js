@@ -519,10 +519,21 @@ function healthAssistantMarkup(){
  return '<div class="health-assistant-launcher"><button class="btn sec health-assistant-trigger" type="button" data-toggle-health-assistant>💬 Ask Health Assistant</button><section class="panel health-assistant-panel" id="askHealthAssistant" hidden><div class="panel-head"><div><span class="eyebrow">THEOS LAFIYA · HEALTH SUPPORT</span><h3>Ask Health Assistant</h3><p>Simple health information in English or Hausa.</p></div><button class="btn sec sm" type="button" data-close-health-assistant aria-label="Close health assistant">Close</button></div><div class="health-quick-questions">'+quick.map(q=>'<button class="btn sec sm" type="button" data-health-question="'+escapeHtml(q)+'">'+escapeHtml(q)+'</button>').join("")+'</div><div id="healthAssistantMessages" class="health-assistant-messages" aria-live="polite"><p class="health-assistant-welcome">Hello! Ask about pregnancy, antenatal care, immunization, child health, malaria or nutrition.</p></div><form id="healthAssistantForm" class="health-assistant-form"><input name="question" type="text" maxlength="600" placeholder="'+(ha?"Rubuta tambayar lafiya...":"Ask a health question...")+'" required><button class="btn" type="submit">'+(ha?"Aika":"Ask")+'</button></form><p class="health-chat-disclaimer">This is health information only, not a doctor. Please visit your nearest PHC if you feel sick.</p></section></div>';
 }
 function healthTipsTickerMarkup(tips){
-  const rows=(tips||[]).filter(t=>t.is_active!==false);
-  const fallback=[{english_text:"Wash hands with soap and safe water before and after every patient contact.",hausa_text:"Wanke hannu da sabulu da ruwa mai tsafta kafin da bayan kula da mara lafiya."},{english_text:"For diarrhoea, give ORS according to PHC protocol.",hausa_text:"Idan gudawa ta faru, ba da ORS bisa tsarin PHC."}];
-  const items=(rows.length?rows:fallback).map(t=>'<span class="health-tip-item" data-en="'+escapeHtml(t.english_text)+'" data-ha="'+escapeHtml(t.hausa_text||t.english_text)+'">'+escapeHtml(currentLanguage()==="ha"?(t.hausa_text||t.english_text):t.english_text)+'</span>').join('<b aria-hidden="true"> • </b>');
-  return '<section class="health-tips-ticker" aria-label="Health tips ticker"><strong data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</strong><div class="health-ticker-window"><div class="health-ticker-track">'+items+ '<span aria-hidden="true"> • Theos Lafiya • </span>'+items+'</div></div></section>';
+  const rows=(tips||[]).filter(t=>t.is_active!==false).map(t=>({
+    english_text:cleanHealthTipText(t.english_text),
+    hausa_text:cleanHealthTipText(t.hausa_text)
+  })).filter(t=>t.english_text||t.hausa_text);
+  const fallback=[
+    {english_text:"Wash hands with soap and safe water before and after every patient contact.",hausa_text:"Wanke hannu da sabulu da ruwa mai tsafta kafin da bayan kula da mara lafiya."},
+    {english_text:"For diarrhoea, give ORS according to PHC protocol.",hausa_text:"Idan gudawa ta faru, ba da ORS bisa tsarin PHC."}
+  ];
+  const items=(rows.length?rows:fallback).slice(0,4).map((tip,index)=>{
+    const english=tip.english_text||tip.hausa_text;
+    const hausa=tip.hausa_text||english;
+    const visible=currentLanguage()==="ha"?hausa:english;
+    return '<article class="health-tip-card"><span class="health-tip-number">'+String(index+1).padStart(2,"0")+'</span><p data-en="'+escapeHtml(english)+'" data-ha="'+escapeHtml(hausa)+'">'+escapeHtml(visible)+'</p></article>';
+  }).join("");
+  return '<section class="health-tips-panel" aria-label="Health tips"><div class="health-tips-heading"><div><span class="facility-kicker">PRACTICAL HEALTH GUIDANCE</span><h3 data-en="HEALTH TIPS" data-ha="NASIHAR LAFIYA">'+(currentLanguage()==="ha"?"NASIHAR LAFIYA":"HEALTH TIPS")+'</h3></div><span class="health-tips-count">'+(rows.length||fallback.length)+' tips</span></div><div class="health-tips-grid">'+items+'</div><p class="health-tips-note">Follow approved facility protocols and refer patients when necessary.</p></section>';
 }
 function offlineHealthAnswer(question,language){
   const knowledge=STATE.healthKnowledge||[],q=String(question||"").toLowerCase();
@@ -574,19 +585,21 @@ function adminIcon(name) {
 function cleanHealthTipText(value){
   const raw=String(value||"").trim();
   if(!raw)return "";
-  let text=raw;
-  if(/<\/?[a-z][\s\S]*?>/i.test(raw)){
-    const parsed=new DOMParser().parseFromString(raw,"text/html");
-    parsed.querySelectorAll("script,style,noscript,iframe,svg,ul.links").forEach(node=>node.remove());
+  const decoder=document.createElement("textarea");
+  decoder.innerHTML=raw;
+  const decoded=decoder.value;
+  let text=decoded;
+  if(/<\/?[a-z][\s\S]*?>/i.test(decoded)){
+    const parsed=new DOMParser().parseFromString(decoded,"text/html");
+    parsed.querySelectorAll("script,style,noscript,iframe,svg,canvas,template,pre,code,ul.links,nav,footer,header").forEach(node=>node.remove());
     text=parsed.body.textContent||"";
-  }else{
-    const decoder=document.createElement("textarea");
-    decoder.innerHTML=raw;
-    text=decoder.value;
   }
-  text=text.replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi," ")
+  text=text.replace(/(?:<!doctype\s+html>|<\/?(?:html|head|body|meta|link|title)\b[^>]*>)/gi," ")
+    .replace(/\b(?:function\s*\(|const\s+\w+\s*=|let\s+\w+\s*=|var\s+\w+\s*=|import\s+\{|export\s+(?:default|const)|document\.querySelector|window\.location)\b[\s\S]{0,500}/gi," ")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi," ")
     .replace(/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s+\d{1,2}\/\d{1,2}\/\d{4}(?:\s*[·-]\s*\d{1,2}:\d{2})?\b/gi," ")
     .replace(/\bRead more\b/gi," ")
+    .replace(/[{};]{2,}/g," ")
     .replace(/\s+/g," ").trim();
   const duplicate=text.match(/^(.{8,180}?)[.!?]?\s+\1[.!?]?$/i);
   if(duplicate)text=duplicate[1].trim();
