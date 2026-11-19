@@ -1155,3 +1155,38 @@ body[data-workspace="facility"] .top-actions .btn{white-space:nowrap}
  body[data-workspace="facility"] .top-actions{gap:5px}
  body[data-workspace="facility"] .top-actions .btn{padding:7px 8px;font-size:9px}
 }
+
+
+/* Match the Health Tips panel and each carousel slide to the facility dashboard width. */
+body[data-workspace="facility"] .health-tips-band{
+  width:100%;
+  max-width:none;
+  padding:0;
+  box-sizing:border-box;
+}
+body[data-workspace="facility"] .health-tips-band .health-tips-panel{
+  width:100%;
+  max-width:none;
+  margin:0 0 14px;
+  box-sizing:border-box;
+}
+body[data-workspace="facility"] .health-tips-band .health-tips-carousel{
+  width:100%;
+  max-width:none;
+}
+body[data-workspace="facility"] .health-tips-band .health-tip-card{
+  flex:0 0 100%;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+}
+@media(max-width:640px){
+  body[data-workspace="facility"] .health-tips-band .health-tips-panel{
+    width:100%;
+    margin:0 0 12px;
+  }
+  body[data-workspace="facility"] .health-tips-band .health-tip-card{
+    flex-basis:100%;
+    width:100%;
+  }
+}
