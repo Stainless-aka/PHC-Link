@@ -1101,7 +1101,7 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 .health-tips-heading h3{margin:4px 0 0;color:var(--ink);font:750 17px Manrope,sans-serif;letter-spacing:.02em}
 .health-tips-count{flex:none;padding:6px 10px;border-radius:999px;background:var(--soft,#edf4f6);color:var(--muted);font-size:11px;font-weight:750}
 .health-tips-carousel{width:100%;max-width:780px;margin:0 auto;overflow:hidden;border-radius:11px}
-.health-tips-track{display:flex;width:max-content;max-width:none;will-change:transform;animation:health-tip-carousel calc(var(--tip-count)*2.5s) linear infinite}
+.health-tips-track{display:flex;width:max-content;max-width:none;will-change:transform;animation:health-tip-carousel calc(var(--tip-count)*4.5s) linear infinite}
 .health-tip-card{display:flex;align-items:flex-start;gap:12px;flex:0 0 min(720px, calc(100vw - 100px));width:min(720px, calc(100vw - 100px));min-width:0;min-height:112px;padding:18px;border:1px solid var(--line);border-radius:11px;background:var(--surface,var(--white))}
 .health-tip-number{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border-radius:9px;background:#e4f2ef;color:#116b68;font-size:11px;font-weight:800}
 .health-tip-card p{display:block;flex:1;min-width:0;margin:2px 0 0;color:var(--ink);font-size:14px;line-height:1.75;overflow-wrap:anywhere;white-space:normal}
