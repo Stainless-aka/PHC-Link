@@ -1113,3 +1113,11 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 :root[data-theme="dark"] .health-tips-panel{background:var(--white);border-color:var(--line)}
 :root[data-theme="dark"] .health-tip-card{background:#172b37;border-color:var(--line)}
 :root[data-theme="dark"] .health-tip-number{background:#193d3b;color:#9ce1d5}
+
+
+/* Health tips sit outside the dashboard shell and use the available viewport width. */
+.health-tips-band{width:100%;padding:0 clamp(10px,2.5vw,32px);box-sizing:border-box}
+.health-tips-band .health-tips-panel{width:min(100%,1200px);max-width:1200px;margin:14px auto 18px;padding:16px clamp(14px,2vw,24px);box-sizing:border-box}
+.health-tips-band .health-tips-carousel{width:100%;max-width:none}
+.health-tips-band .health-tip-card{flex-basis:min(1080px,calc(100vw - 100px));width:min(1080px,calc(100vw - 100px));min-height:104px}
+@media(max-width:640px){.health-tips-band{padding:0 10px}.health-tips-band .health-tips-panel{width:100%;margin:10px auto 14px;padding:13px}.health-tips-band .health-tip-card{flex-basis:calc(100vw - 66px);width:calc(100vw - 66px);min-height:96px;padding:13px}}
