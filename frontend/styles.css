@@ -1093,3 +1093,19 @@ body[data-workspace="facility"] .hdr>.facility-header-actions .btn{width:auto;wh
 /* Admin dashboard page navigation */
 .admin-page{display:block;min-width:0}.admin-page[hidden]{display:none!important}.admin-page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 22px;padding:4px 0 18px;border-bottom:1px solid var(--line)}.admin-page-heading h2{margin:5px 0 4px;font:800 24px Manrope,sans-serif;color:var(--ink);letter-spacing:-.6px}.admin-page-heading p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}.admin-page-index{flex:none;padding:7px 10px;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.7px}.admin-breadcrumb-current{margin-left:9px;color:var(--ink);font-weight:700}.admin-nav a[aria-current="page"]{background:var(--admin-nav-active,rgba(17,107,134,.1));color:var(--primary,#116b86);font-weight:700}.admin-page>.admin-section:first-child{margin-top:0}.admin-page>.admin-restock-details:first-child{margin-top:0}.admin-page .admin-section{scroll-margin-top:20px}
 @media(max-width:760px){.admin-page-heading{align-items:flex-start}.admin-page-heading h2{font-size:20px}.admin-page-index{font-size:9px}.admin-nav{max-height:calc(100vh - 210px);overflow-y:auto}}
+
+
+/* Expanded, readable health tips panel for facility staff */
+.health-tips-panel{width:100%;margin:18px 0 26px;padding:20px 22px;border:1px solid var(--line);border-radius:14px;background:var(--white);box-shadow:0 3px 12px rgba(24,55,72,.06)}
+.health-tips-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:15px}
+.health-tips-heading h3{margin:4px 0 0;color:var(--ink);font:750 17px Manrope,sans-serif;letter-spacing:.02em}
+.health-tips-count{flex:none;padding:6px 10px;border-radius:999px;background:var(--soft,#edf4f6);color:var(--muted);font-size:11px;font-weight:750}
+.health-tips-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.health-tip-card{display:flex;align-items:flex-start;gap:12px;min-width:0;min-height:94px;padding:16px;border:1px solid var(--line);border-radius:11px;background:var(--surface,var(--white))}
+.health-tip-number{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:9px;background:#e4f2ef;color:#116b68;font-size:11px;font-weight:800}
+.health-tip-card p{margin:2px 0 0;color:var(--ink);font-size:13px;line-height:1.65;overflow-wrap:anywhere}
+.health-tips-note{margin:14px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+@media(max-width:640px){.health-tips-panel{padding:16px}.health-tips-grid{grid-template-columns:1fr}.health-tip-card{min-height:0;padding:13px}.health-tips-heading h3{font-size:15px}}
+:root[data-theme="dark"] .health-tips-panel{background:var(--white);border-color:var(--line)}
+:root[data-theme="dark"] .health-tip-card{background:#172b37;border-color:var(--line)}
+:root[data-theme="dark"] .health-tip-number{background:#193d3b;color:#9ce1d5}
